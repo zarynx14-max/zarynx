@@ -43,7 +43,7 @@ const FEATURED: Article = {
   slug: 'best-gpu-1440p-gaming-2025',
   title: 'Best GPU for 1440p gaming in 2025 — full breakdown and recommendations',
   excerpt:
-    'We tested 14 GPUs at 1440p across 10 popular games. Here's exactly which card to buy at every budget — and which ones to skip.',
+    "We tested 14 GPUs at 1440p across 10 popular games. Here's exactly which card to buy at every budget — and which ones to skip.",
   categories: [
     { label: 'PC Building', color: 'mint' },
     { label: 'GPU Guide', color: 'blue' },
