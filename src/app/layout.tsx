@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { Inter } from 'next/font/google'
 import Script from 'next/script'
+import { Analytics } from '@vercel/analytics/react'
 import '../styles/globals.css'
 import { siteConfig } from '@/lib/config'
 import { Navbar } from '@/components/layout/Navbar'
@@ -77,6 +78,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         <Navbar />
         <main>{children}</main>
         <Footer />
+        <Analytics />
       </body>
     </html>
   )
