@@ -2,3 +2,5 @@ export { StatsStrip, BlogSection, CtaStrip, FaqSection, NewsletterSection } from
 export { ToolsListing } from './ToolsListing'
 export { BlogListing } from './BlogListing'
 export { TierListing } from './TierListing'
+
+export { GamesListing } from './GamesListing'
