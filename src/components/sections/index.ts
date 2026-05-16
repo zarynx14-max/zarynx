@@ -4,3 +4,4 @@ export { BlogListing } from './BlogListing'
 export { TierListing } from './TierListing'
 
 export { GamesListing } from './GamesListing'
+export { BlogCategoryListing } from './BlogCategoryListing'
