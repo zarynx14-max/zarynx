@@ -297,7 +297,7 @@ export default function ReactionTesterPage() {
         usersPerMonth="25,000+"
       />
 
-      <ToolLayout>
+      <ToolLayout wide>
 
         {/* ── STATS ROW ─────────────────────────────────────────────────── */}
         <ToolSection>
@@ -519,11 +519,7 @@ export default function ReactionTesterPage() {
                     <line
                       x1="90" y1="90" x2="90" y2="24"
                       stroke="#fff" strokeWidth="2.5" strokeLinecap="round"
-                      style={{
-                        transformOrigin: '90px 90px',
-                        transform: `rotate(${gaugeData.needleDeg}deg)`,
-                        transition: 'transform .6s cubic-bezier(.34,1.2,.64,1)',
-                      }}
+                      transform={`rotate(${gaugeData.needleDeg}, 90, 90)`}
                     />
                     <circle cx="90" cy="90" r="4.5" fill="#fff" opacity="0.9" />
                     <text x="13" y="106" fill="#5c6080" fontSize="9" fontFamily="DM Mono,monospace">150</text>
