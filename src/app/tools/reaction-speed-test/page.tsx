@@ -156,27 +156,28 @@ function Sparkline({ attempts }: { attempts: Attempt[] }) {
   const min = Math.min(...values)
   const max = Math.max(...values)
   const range = max - min || 1
-  const w = 220, h = 48
+  const W = 600, H = 80
+  const PAD = 10
   const pts = values.map((v, i) => {
-    const x = (i / (values.length - 1)) * w
-    const y = h - ((v - min) / range) * (h - 8) - 4
-    return `${x},${y}`
+    const x = PAD + (i / (values.length - 1)) * (W - PAD * 2)
+    const y = PAD + (1 - (v - min) / range) * (H - PAD * 2)
+    return { x, y, v }
   })
-  const pathD = `M ${pts.join(' L ')}`
+  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
+  const areaD = `${pathD} L ${W - PAD} ${H} L ${PAD} ${H} Z`
   return (
-    <svg viewBox={`0 0 ${w} ${h}`} className="w-full" style={{ height: h }}>
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80 }} preserveAspectRatio="none">
       <defs>
         <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00e5a0" stopOpacity="0.25" />
+          <stop offset="0%" stopColor="#00e5a0" stopOpacity="0.3" />
           <stop offset="100%" stopColor="#00e5a0" stopOpacity="0" />
         </linearGradient>
       </defs>
-      <path d={`${pathD} L ${w},${h} L 0,${h} Z`} fill="url(#sparkGrad)" />
-      <path d={pathD} fill="none" stroke="#00e5a0" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
-      {values.map((v, i) => {
-        const [x, y] = pts[i].split(',').map(Number)
-        return <circle key={i} cx={x} cy={y} r="3" fill={getRating(v).color} />
-      })}
+      <path d={areaD} fill="url(#sparkGrad)" />
+      <path d={pathD} fill="none" stroke="#00e5a0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+      {pts.map((p, i) => (
+        <circle key={i} cx={p.x} cy={p.y} r="5" fill={getRating(p.v).color} stroke="#0D0F14" strokeWidth="1.5" />
+      ))}
     </svg>
   )
 }
@@ -453,50 +454,46 @@ export default function ReactionTesterPage() {
 
         {/* ── CHARTS GRID ───────────────────────────────────────────────── */}
         <ToolSection>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
-            {/* Trend sparkline */}
-            <div className="col-span-1 rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4 sm:col-span-2">
-              <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--t3)]">
-                Reaction Time Trend
-                {avg != null && (
-                  <span
-                    className="ml-2 rounded-full border px-2 py-[1px] font-semibold"
-                    style={{ color: getRating(avg).color, borderColor: getRating(avg).borderColor, background: getRating(avg).bgColor }}
-                  >
-                    {getRating(avg).label}
-                  </span>
-                )}
-              </p>
-              {attempts.length < 2 ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-8">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--bg4,#1b1d28)] opacity-70">
-                    <TrendingUp size={20} className="text-[var(--t3)]" strokeWidth={1.8} />
-                  </div>
-                  <p className="max-w-[140px] text-center text-[12px] leading-[1.4] text-[var(--t3)]">
-                    Complete 2+ attempts to see your trend
-                  </p>
-                </div>
-              ) : (
-                <Sparkline attempts={attempts} />
+          {/* Trend sparkline — full width */}
+          <div className="mb-3 rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4">
+            <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--t3)]">
+              Reaction Time Trend
+              {avg != null && (
+                <span
+                  className="ml-2 rounded-full border px-2 py-[1px] font-semibold"
+                  style={{ color: getRating(avg).color, borderColor: getRating(avg).borderColor, background: getRating(avg).bgColor }}
+                >
+                  avg {avg}ms — {getRating(avg).label}
+                </span>
               )}
-            </div>
+            </p>
+            {attempts.length < 2 ? (
+              <div className="flex flex-col items-center justify-center gap-2 py-6 opacity-50">
+                <TrendingUp size={28} className="text-[var(--t3)]" strokeWidth={1.5} />
+                <p className="text-[12px] text-[var(--t3)]">Complete 2+ attempts to see your trend</p>
+              </div>
+            ) : (
+              <div className="w-full overflow-hidden rounded-lg">
+                <Sparkline attempts={attempts} />
+              </div>
+            )}
+          </div>
+
+          {/* Speed Gauge + Distribution side by side */}
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
 
             {/* Speed Gauge */}
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4">
               <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--t3)]">Latest Speed</p>
               {gaugeData == null || lastMs == null ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-8">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--bg4,#1b1d28)] opacity-70">
-                    <Zap size={20} className="text-[var(--t3)]" strokeWidth={1.8} />
-                  </div>
-                  <p className="max-w-[140px] text-center text-[12px] leading-[1.4] text-[var(--t3)]">
-                    Run a test to see your speed gauge
-                  </p>
+                <div className="flex flex-col items-center justify-center gap-2 py-6 opacity-50">
+                  <Zap size={28} className="text-[var(--t3)]" strokeWidth={1.5} />
+                  <p className="text-[12px] text-[var(--t3)]">Run a test to see your speed gauge</p>
                 </div>
               ) : (
-                <div className="flex flex-col items-center gap-1">
-                  <svg viewBox="0 0 180 100" className="w-[160px] overflow-visible">
+                <div className="flex flex-col items-center gap-2">
+                  <svg viewBox="0 0 200 115" className="w-full max-w-[200px] overflow-visible">
                     <defs>
                       <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
                         <stop offset="0%" stopColor="#00e5a0" />
@@ -504,62 +501,72 @@ export default function ReactionTesterPage() {
                         <stop offset="100%" stopColor="#ff4d6a" />
                       </linearGradient>
                     </defs>
-                    <path d="M 15 90 A 75 75 0 0 1 165 90" fill="none" stroke="#1b1d28" strokeWidth="12" strokeLinecap="round" />
-                    <path d="M 15 90 A 75 75 0 0 1 165 90" fill="none" stroke="url(#gaugeGrad)" strokeWidth="12" strokeLinecap="round" opacity="0.2" />
+                    {/* Track */}
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="#1b1d28" strokeWidth="14" strokeLinecap="round" />
+                    {/* Full gradient track faint */}
+                    <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="url(#gaugeGrad)" strokeWidth="14" strokeLinecap="round" opacity="0.15" />
+                    {/* Active arc */}
                     <path
-                      d="M 15 90 A 75 75 0 0 1 165 90"
+                      d="M 20 100 A 80 80 0 0 1 180 100"
                       fill="none"
                       stroke={gaugeData.arcColor}
-                      strokeWidth="12"
+                      strokeWidth="14"
                       strokeLinecap="round"
-                      strokeDasharray="236"
-                      strokeDashoffset={gaugeData.arcOffset}
+                      strokeDasharray="251"
+                      strokeDashoffset={251 - 251 * (1 - Math.min(1, Math.max(0, (lastMs - 100) / 600)))}
                       style={{ transition: 'stroke-dashoffset .6s cubic-bezier(.34,1.2,.64,1), stroke .4s' }}
                     />
+                    {/* Needle */}
                     <line
-                      x1="90" y1="90" x2="90" y2="24"
-                      stroke="#fff" strokeWidth="2.5" strokeLinecap="round"
-                      transform={`rotate(${gaugeData.needleDeg}, 90, 90)`}
+                      x1="100" y1="100" x2="100" y2="30"
+                      stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round"
+                      transform={`rotate(${-90 + Math.min(1, Math.max(0, (lastMs - 100) / 600)) * 180}, 100, 100)`}
                     />
-                    <circle cx="90" cy="90" r="4.5" fill="#fff" opacity="0.9" />
-                    <text x="13" y="106" fill="#5c6080" fontSize="9" fontFamily="DM Mono,monospace">150</text>
-                    <text x="153" y="106" fill="#5c6080" fontSize="9" fontFamily="DM Mono,monospace" textAnchor="end">600+</text>
+                    <circle cx="100" cy="100" r="5" fill="#ffffff" opacity="0.9" />
+                    {/* Labels */}
+                    <text x="18" y="118" fill="#5c6080" fontSize="9" fontFamily="monospace">100ms</text>
+                    <text x="182" y="118" fill="#5c6080" fontSize="9" fontFamily="monospace" textAnchor="end">700ms</text>
+                    <text x="100" y="88" fill="#5c6080" fontSize="8" fontFamily="monospace" textAnchor="middle">avg</text>
                   </svg>
-                  <div className="font-mono text-[26px] font-medium" style={{ color: lastRating!.color }}>
-                    {lastMs}
+                  <div className="font-mono text-[30px] font-medium leading-none" style={{ color: lastRating!.color }}>
+                    {lastMs}<span className="text-[14px] text-[var(--t3)] ml-1">ms</span>
                   </div>
-                  <div className="font-mono text-[10px] text-[var(--t3)]">ms</div>
-                  <div className="text-[10px] font-semibold uppercase tracking-[.07em]" style={{ color: lastRating!.color }}>
+                  <div
+                    className="rounded-full border px-3 py-[3px] text-[10px] font-semibold uppercase tracking-[.07em]"
+                    style={{ color: lastRating!.color, borderColor: lastRating!.borderColor, background: lastRating!.bgColor }}
+                  >
                     {lastRating!.label}
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Distribution */}
+            {/* Distribution — always show all buckets, zero ones are just empty bars */}
             <div className="rounded-xl border border-[var(--border)] bg-[var(--bg2)] p-4">
-              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--t3)]">Rating Distribution</p>
-              {total === 0 ? (
-                <div className="flex flex-col items-center justify-center gap-2 py-8">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[var(--border)] bg-[var(--bg4,#1b1d28)] opacity-70">
-                    <Target size={20} className="text-[var(--t3)]" strokeWidth={1.8} />
+              <p className="mb-3 text-[10px] font-bold uppercase tracking-[0.1em] text-[var(--t3)]">
+                Rating Distribution
+                {total > 0 && <span className="ml-2 text-[var(--t2)]">{total} attempt{total !== 1 ? 's' : ''}</span>}
+              </p>
+              <div className="flex flex-col gap-[8px]">
+                {buckets.map(b => (
+                  <div key={b.cls} className="flex items-center gap-2 text-[11px]">
+                    <div className="w-[80px] shrink-0 truncate font-mono text-[10px]" style={{ color: b.color }}>
+                      {b.label}
+                    </div>
+                    <div className="h-[6px] flex-1 overflow-hidden rounded-full bg-[#1b1d28]">
+                      <div
+                        className="h-full rounded-full transition-all duration-500"
+                        style={{ width: total > 0 ? `${Math.round((b.count / maxBucketCount) * 100)}%` : '0%', background: b.color }}
+                      />
+                    </div>
+                    <div className="w-5 shrink-0 text-right font-mono text-[10px]" style={{ color: b.count > 0 ? b.color : 'var(--t3)' }}>
+                      {b.count}
+                    </div>
                   </div>
-                  <p className="max-w-[140px] text-center text-[12px] leading-[1.4] text-[var(--t3)]">
-                    Complete attempts to see distribution
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-[7px] pt-1">
-                  {buckets.map(b => (
-                    <DistBar
-                      key={b.cls}
-                      label={b.label.split(' ')[0]}
-                      color={b.color}
-                      count={b.count}
-                      maxCount={maxBucketCount}
-                    />
-                  ))}
-                </div>
+                ))}
+              </div>
+              {total === 0 && (
+                <p className="mt-3 text-center text-[11px] text-[var(--t3)] opacity-60">Run attempts to fill the chart</p>
               )}
             </div>
           </div>
