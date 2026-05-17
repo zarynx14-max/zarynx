@@ -152,31 +152,118 @@ function HistoryItem({ attempt, index, total, avg, maxMs, isNew }: {
 
 function Sparkline({ attempts }: { attempts: Attempt[] }) {
   if (attempts.length < 2) return null
+
   const values = attempts.map(a => a.ms)
-  const min = Math.min(...values)
-  const max = Math.max(...values)
-  const range = max - min || 1
-  const W = 600, H = 80
-  const PAD = 10
-  const pts = values.map((v, i) => {
-    const x = PAD + (i / (values.length - 1)) * (W - PAD * 2)
-    const y = PAD + (1 - (v - min) / range) * (H - PAD * 2)
-    return { x, y, v }
-  })
-  const pathD = pts.map((p, i) => `${i === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ')
-  const areaD = `${pathD} L ${W - PAD} ${H} L ${PAD} ${H} Z`
+  const avg    = Math.round(values.reduce((s, v) => s + v, 0) / values.length)
+
+  // Chart dimensions
+  const W = 700, H = 200
+  const PAD_LEFT = 52, PAD_RIGHT = 24, PAD_TOP = 16, PAD_BOTTOM = 28
+  const CW = W - PAD_LEFT - PAD_RIGHT
+  const CH = H - PAD_TOP  - PAD_BOTTOM
+
+  // Y axis range — pad by 20ms above and below
+  const minV = Math.min(...values)
+  const maxV = Math.max(...values)
+  const pad  = Math.max(20, Math.round((maxV - minV) * 0.25))
+  const yMin = Math.floor((minV - pad) / 10) * 10
+  const yMax = Math.ceil((maxV  + pad) / 10) * 10
+  const yRange = yMax - yMin || 1
+
+  // Helpers
+  const toX = (i: number) =>
+    PAD_LEFT + (values.length === 1 ? CW / 2 : (i / (values.length - 1)) * CW)
+  const toY = (v: number) =>
+    PAD_TOP + (1 - (v - yMin) / yRange) * CH
+
+  // Build smooth cubic bezier path
+  const pts = values.map((v, i) => ({ x: toX(i), y: toY(v), v }))
+  let linePath = `M ${pts[0].x} ${pts[0].y}`
+  for (let i = 1; i < pts.length; i++) {
+    const prev = pts[i - 1]
+    const curr = pts[i]
+    const cx   = (prev.x + curr.x) / 2
+    linePath  += ` C ${cx} ${prev.y} ${cx} ${curr.y} ${curr.x} ${curr.y}`
+  }
+  const areaPath =
+    `${linePath} L ${pts[pts.length - 1].x} ${PAD_TOP + CH} L ${pts[0].x} ${PAD_TOP + CH} Z`
+
+  // Y axis ticks — 5 evenly spaced
+  const yTicks: number[] = []
+  const step = Math.ceil((yMax - yMin) / 4 / 10) * 10
+  for (let v = yMin; v <= yMax; v += step) yTicks.push(v)
+
+  // Avg line Y
+  const avgY = toY(avg)
+
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 80 }} preserveAspectRatio="none">
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height: 200 }}>
       <defs>
-        <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#00e5a0" stopOpacity="0.3" />
-          <stop offset="100%" stopColor="#00e5a0" stopOpacity="0" />
+        <linearGradient id="sparkAreaGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%"   stopColor="#00e5a0" stopOpacity="0.22" />
+          <stop offset="100%" stopColor="#00e5a0" stopOpacity="0"    />
         </linearGradient>
+        <clipPath id="chartClip">
+          <rect x={PAD_LEFT} y={PAD_TOP} width={CW} height={CH} />
+        </clipPath>
       </defs>
-      <path d={areaD} fill="url(#sparkGrad)" />
-      <path d={pathD} fill="none" stroke="#00e5a0" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+
+      {/* Horizontal grid lines */}
+      {yTicks.map(v => (
+        <line
+          key={v}
+          x1={PAD_LEFT} y1={toY(v)} x2={PAD_LEFT + CW} y2={toY(v)}
+          stroke="#1e2130" strokeWidth="1"
+        />
+      ))}
+
+      {/* Y axis labels */}
+      {yTicks.map(v => (
+        <text
+          key={v}
+          x={PAD_LEFT - 6} y={toY(v) + 4}
+          fill="#555a6b" fontSize="9" textAnchor="end" fontFamily="monospace"
+        >
+          {v}ms
+        </text>
+      ))}
+
+      {/* X axis labels */}
       {pts.map((p, i) => (
-        <circle key={i} cx={p.x} cy={p.y} r="5" fill={getRating(p.v).color} stroke="#0D0F14" strokeWidth="1.5" />
+        <text
+          key={i}
+          x={p.x} y={H - 6}
+          fill="#555a6b" fontSize="9" textAnchor="middle" fontFamily="monospace"
+        >
+          #{i + 1}
+        </text>
+      ))}
+
+      {/* Area fill */}
+      <path d={areaPath} fill="url(#sparkAreaGrad)" clipPath="url(#chartClip)" />
+
+      {/* Line */}
+      <path d={linePath} fill="none" stroke="#00e5a0" strokeWidth="2.5"
+        strokeLinecap="round" strokeLinejoin="round" clipPath="url(#chartClip)" />
+
+      {/* Average dashed line */}
+      <line
+        x1={PAD_LEFT} y1={avgY} x2={PAD_LEFT + CW} y2={avgY}
+        stroke="#ffd166" strokeWidth="1.2" strokeDasharray="5,4" opacity="0.7"
+      />
+      <text x={PAD_LEFT + CW - 2} y={avgY - 5}
+        fill="#ffd166" fontSize="9" textAnchor="end" fontFamily="monospace" opacity="0.9">
+        avg {avg}ms
+      </text>
+
+      {/* Dots */}
+      {pts.map((p, i) => (
+        <circle
+          key={i}
+          cx={p.x} cy={p.y} r="5"
+          fill={getRating(p.v).color}
+          stroke="#0d0f14" strokeWidth="2"
+        />
       ))}
     </svg>
   )
