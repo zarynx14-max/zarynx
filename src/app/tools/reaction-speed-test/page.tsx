@@ -148,8 +148,8 @@ function TrendChart({ attempts }: { attempts: number[] }) {
               bodyColor: '#eef0f8',
               bodyFont: { family: 'DM Mono', size: 12 },
               callbacks: {
-                label: (ctx: { parsed: { y: number } }) => {
-                  const ms = ctx.parsed.y
+                label: (ctx: import('chart.js').TooltipItem<'line'>) => {
+                  const ms = ctx.parsed.y as number
                   return ` ${ms}ms — ${getRating(ms).label}`
                 }
               }
