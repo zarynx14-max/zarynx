@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  transpilePackages: ['chart.js'],
   images: {
     formats: ['image/avif', 'image/webp'],
   },
