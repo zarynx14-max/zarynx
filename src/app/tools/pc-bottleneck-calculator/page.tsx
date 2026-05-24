@@ -164,22 +164,22 @@ const UCS = [
 type UcId = typeof UCS[number]['id']
 
 const GAMES = [
-  {id:'cs2',      name:'Counter-Strike 2',     genre:'FPS / Competitive', color:'#F0A000', cpuW:.72, base:{r1080:235,r1440:192,r4k:112}},
-  {id:'valorant', name:'Valorant',              genre:'FPS / Competitive', color:'#FF4655', cpuW:.80, base:{r1080:340,r1440:275,r4k:158}},
-  {id:'fortnite', name:'Fortnite',              genre:'Battle Royale',     color:'#00D4FF', cpuW:.62, base:{r1080:200,r1440:155,r4k:88}},
-  {id:'warzone',  name:'Call of Duty: Warzone', genre:'Battle Royale',     color:'#6B8F00', cpuW:.58, base:{r1080:145,r1440:105,r4k:58}},
-  {id:'apex',     name:'Apex Legends',          genre:'Battle Royale',     color:'#CD3333', cpuW:.60, base:{r1080:185,r1440:138,r4k:78}},
-  {id:'cyberpunk',name:'Cyberpunk 2077',        genre:'Open World / RPG',  color:'#FCEE09', cpuW:.38, base:{r1080:85, r1440:65, r4k:36}},
-  {id:'rdr2',     name:'Red Dead Redemption 2', genre:'Open World',        color:'#8B4513', cpuW:.52, base:{r1080:95, r1440:70, r4k:38}},
-  {id:'elden',    name:'Elden Ring',            genre:'Action RPG',        color:'#C8A951', cpuW:.45, base:{r1080:110,r1440:82, r4k:46}},
-  {id:'minecraft',name:'Minecraft (Modded)',    genre:'Sandbox',           color:'#5D8A31', cpuW:.82, base:{r1080:145,r1440:112,r4k:62}},
-  {id:'helldivers',name:'Helldivers 2',         genre:'Co-op Shooter',     color:'#FFB800', cpuW:.55, base:{r1080:88, r1440:65, r4k:36}},
-  {id:'lol',      name:'League of Legends',     genre:'MOBA',              color:'#C89B3C', cpuW:.78, base:{r1080:308,r1440:238,r4k:135}},
-  {id:'witcher3', name:'The Witcher 3',         genre:'Open World / RPG',  color:'#C0392B', cpuW:.48, base:{r1080:115,r1440:85, r4k:48}},
-  {id:'starfield',name:'Starfield',             genre:'RPG / Open World',  color:'#4488FF', cpuW:.65, base:{r1080:82, r1440:60, r4k:34}},
-  {id:'hogwarts', name:'Hogwarts Legacy',       genre:'Action RPG',        color:'#7B2FBE', cpuW:.46, base:{r1080:78, r1440:58, r4k:32}},
-  {id:'spiderman',name:"Marvel's Spider-Man 2",genre:'Action / Open World',color:'#E62429', cpuW:.48, base:{r1080:95, r1440:72, r4k:40}},
-  {id:'msfs',     name:'MS Flight Simulator',   genre:'Simulation',        color:'#007FFF', cpuW:.72, base:{r1080:62, r1440:48, r4k:28}},
+  {id:'cs2',      name:'Counter-Strike 2',     genre:'FPS / Competitive', color:'#F0A000', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/730/header.jpg',          cpuW:.72, base:{r1080:235,r1440:192,r4k:112}},
+  {id:'valorant', name:'Valorant',              genre:'FPS / Competitive', color:'#FF4655', thumb:'https://cdn1.epicgames.com/offer/cbd5b3d310a54b12bf3fe8c41994174f/EGS_Valorant_RiotGames_S2_1200x1600-b76fb08cf073069a55fca3c37d6f3b2e', cpuW:.80, base:{r1080:340,r1440:275,r4k:158}},
+  {id:'fortnite', name:'Fortnite',              genre:'Battle Royale',     color:'#00D4FF', thumb:'https://cdn2.unrealengine.com/fortnite-chapter-5-season-3-key-art-1200x1600-c65b1acf1e8c.jpg', cpuW:.62, base:{r1080:200,r1440:155,r4k:88}},
+  {id:'warzone',  name:'Call of Duty: Warzone', genre:'Battle Royale',     color:'#6B8F00', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1938090/header.jpg',       cpuW:.58, base:{r1080:145,r1440:105,r4k:58}},
+  {id:'apex',     name:'Apex Legends',          genre:'Battle Royale',     color:'#CD3333', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1172470/header.jpg',       cpuW:.60, base:{r1080:185,r1440:138,r4k:78}},
+  {id:'cyberpunk',name:'Cyberpunk 2077',        genre:'Open World / RPG',  color:'#FCEE09', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',       cpuW:.38, base:{r1080:85, r1440:65, r4k:36}},
+  {id:'rdr2',     name:'Red Dead Redemption 2', genre:'Open World',        color:'#8B4513', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/header.jpg',       cpuW:.52, base:{r1080:95, r1440:70, r4k:38}},
+  {id:'elden',    name:'Elden Ring',            genre:'Action RPG',        color:'#C8A951', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',       cpuW:.45, base:{r1080:110,r1440:82, r4k:46}},
+  {id:'minecraft',name:'Minecraft (Modded)',    genre:'Sandbox',           color:'#5D8A31', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1672970/header.jpg',       cpuW:.82, base:{r1080:145,r1440:112,r4k:62}},
+  {id:'helldivers',name:'Helldivers 2',         genre:'Co-op Shooter',     color:'#FFB800', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/553850/header.jpg',        cpuW:.55, base:{r1080:88, r1440:65, r4k:36}},
+  {id:'lol',      name:'League of Legends',     genre:'MOBA',              color:'#C89B3C', thumb:'https://cdn1.epicgames.com/offer/24b9b5e323bc40eea252a10273f3eaf2/EGS_LeagueofLegends_RiotGames_S2_1200x1600-bfa8509f99c9adff6a2a7cb12d29c82e', cpuW:.78, base:{r1080:308,r1440:238,r4k:135}},
+  {id:'witcher3', name:'The Witcher 3',         genre:'Open World / RPG',  color:'#C0392B', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/292030/header.jpg',        cpuW:.48, base:{r1080:115,r1440:85, r4k:48}},
+  {id:'starfield',name:'Starfield',             genre:'RPG / Open World',  color:'#4488FF', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1716740/header.jpg',       cpuW:.65, base:{r1080:82, r1440:60, r4k:34}},
+  {id:'hogwarts', name:'Hogwarts Legacy',       genre:'Action RPG',        color:'#7B2FBE', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/990080/header.jpg',        cpuW:.46, base:{r1080:78, r1440:58, r4k:32}},
+  {id:'spiderman',name:"Marvel's Spider-Man 2",genre:'Action / Open World',color:'#E62429', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/2119490/header.jpg',       cpuW:.48, base:{r1080:95, r1440:72, r4k:40}},
+  {id:'msfs',     name:'MS Flight Simulator',   genre:'Simulation',        color:'#007FFF', thumb:'https://cdn.cloudflare.steamstatic.com/steam/apps/1250410/header.jpg',       cpuW:.72, base:{r1080:62, r1440:48, r4k:28}},
 ]
 
 const MAX_CPU = 1020, MAX_GPU = 1500
@@ -280,7 +280,7 @@ function Autocomplete({ type, items, value, onSelect, placeholder }: {
   const accentColor = type === 'cpu' ? '#508CFF' : type === 'gpu' ? '#00E5A0' : '#FF7840'
 
   return (
-    <div ref={wrapRef} style={{ position: 'relative', zIndex: open ? 50 : 'auto' }}>
+    <div ref={wrapRef} style={{ position: 'relative', zIndex: open ? 50 : 1 }}>
       <div
         onClick={() => setOpen(o => !o)}
         style={{
@@ -493,9 +493,21 @@ export default function BottleneckCalculatorPage() {
   // Re-run when fps or uc changes if we already have a result
   useEffect(() => {
     if (result && cpu && gpu && ram && uc) {
-      setResult(calcBN(cpu, gpu, ram, ucObj as any, fps))
+      setResult(calcBN(cpu, gpu, ram, ucObj, fps))
     }
   }, [fps, uc])
+
+  // Auto-trigger when all 4 selections are first completed
+  useEffect(() => {
+    if (cpu && gpu && ram && uc && !result) {
+      setLoading(true)
+      setTimeout(() => {
+        setResult(calcBN(cpu, gpu, ram, ucObj, fps))
+        setLoading(false)
+        setTimeout(() => resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 100)
+      }, 1400)
+    }
+  }, [cpu, gpu, ram, uc])
 
   const lv      = result ? lvOf(result.pct) : 'none'
   const lvColor = { none: '#00E5A0', minor: '#FFD060', moderate: '#FF7840', severe: '#FF5050' }[lv]
@@ -1035,7 +1047,16 @@ export default function BottleneckCalculatorPage() {
                   <div key={g.id} style={{ background: 'rgba(255,255,255,.03)', border: '0.5px solid rgba(255,255,255,.08)', borderRadius: 10, overflow: 'hidden', display: 'flex', alignItems: 'stretch', transition: 'border-color .2s' }}>
                     <div style={{ width: 3, background: g.color, flexShrink: 0 }} />
                     <div style={{ width: 64, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8, background: 'rgba(255,255,255,.02)', borderRight: '0.5px solid rgba(255,255,255,.06)' }}>
-                      <div style={{ width: 46, height: 46, borderRadius: 7, background: `${g.color}22`, border: `0.5px solid ${g.color}44`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
+                      {g.thumb ? (
+                        <img
+                          src={g.thumb}
+                          alt={g.name}
+                          loading="lazy"
+                          style={{ width: 46, height: 46, borderRadius: 7, objectFit: 'cover', border: `0.5px solid ${g.color}44` }}
+                          onError={(e) => { e.currentTarget.style.display = 'none'; e.currentTarget.nextElementSibling.style.display = 'flex' }}
+                        />
+                      ) : null}
+                      <div style={{ width: 46, height: 46, borderRadius: 7, background: `${g.color}22`, border: `0.5px solid ${g.color}44`, display: g.thumb ? 'none' : 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22 }}>
                         {g.genre.includes('FPS') ? '🎯' : g.genre.includes('Battle') ? '🏆' : g.genre.includes('RPG') ? '⚔️' : g.genre.includes('MOBA') ? '🏆' : g.genre.includes('Open') ? '🌍' : '🎮'}
                       </div>
                     </div>
