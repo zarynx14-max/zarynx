@@ -5,7 +5,7 @@ import { Monitor, Activity } from 'lucide-react'
 import {
   ToolBreadcrumb, ToolHeader, ToolExplanation,
   ToolHowTo, ToolFaq, ToolRelated,
-  ToolLayout, ToolSection, SectionLabel,
+  ToolLayout,
 } from '@/components/tool'
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -574,18 +574,19 @@ export default function BottleneckCalculatorPage() {
   return (
     <ToolLayout wide>
       <ToolBreadcrumb
-        items={[
-          { label: 'Tools', href: '/tools' },
-          { label: 'PC Bottleneck Calculator' },
-        ]}
+        toolName="PC Bottleneck Calculator"
+        toolSlug="pc-bottleneck-calculator"
       />
 
       <ToolHeader
-        icon={Monitor}
-        iconColor="orange"
-        title="PC Bottleneck Calculator"
+        name="PC Bottleneck Calculator"
         description="Select your CPU, GPU, and RAM. Get an instant bottleneck score, performance gauge, FPS estimates across 16 games, and balanced upgrade suggestions — free, no sign-up."
-        badge={{ text: '100+ CPUs & GPUs · PassMark-based · May 2025', type: 'info' }}
+        categoryLabel="Hardware"
+        categoryColor="orange"
+        typeLabel="Calculator"
+        typeColor="blue"
+        updatedAt="May 2025"
+        usersPerMonth="50,000+"
       />
 
       {/* ── SELECTOR PANEL ── */}
@@ -1111,11 +1112,17 @@ export default function BottleneckCalculatorPage() {
       {/* Explanation section */}
       <ToolExplanation
         title="What is a PC bottleneck and how does it affect gaming?"
-        points={[
-          { title: 'CPU bottleneck', body: 'Your processor cannot keep up with your GPU. Common in CPU-heavy games like strategy, simulation, and open world titles with many NPCs.' },
-          { title: 'GPU bottleneck', body: 'Your graphics card is slower than your CPU can feed frames to. This is actually the ideal direction — it means your CPU is not wasted.' },
-          { title: 'RAM impact', body: 'RAM speed and capacity affect CPU headroom, especially at 1080p and high framerates. DDR5 and XMP/EXPO profiles can reduce CPU bottlenecks for free.' },
-          { title: 'Resolution matters', body: 'At 4K the GPU does almost all the work. At 1080p/240fps the CPU is under far more pressure. Resolution changes which component bottlenecks you.' },
+        paragraphs={[
+          'A bottleneck happens when one component in your PC is significantly slower than another, causing the faster part to sit idle waiting. The most common pairing is CPU vs GPU — an imbalance between them directly impacts your gaming performance and FPS.',
+        ]}
+        cards={[
+          { icon: Monitor, iconBg: 'rgba(80,140,255,.1)', iconColor: 'var(--blue)',   title: 'CPU bottleneck',    body: 'Your processor cannot keep up with your GPU. Common in CPU-heavy games like strategy, simulation, and high-framerate competitive titles.' },
+          { icon: Monitor, iconBg: 'rgba(0,229,160,.1)',  iconColor: 'var(--mint)',   title: 'GPU bottleneck',    body: 'Your graphics card is slower than your CPU. This is actually the ideal direction — it means the GPU stays at 100% load.' },
+          { icon: Activity,iconBg: 'rgba(255,120,64,.1)', iconColor: 'var(--orange)', title: 'RAM impact',        body: 'RAM speed and capacity affect CPU headroom. DDR5 and enabling XMP/EXPO in BIOS can reduce CPU bottlenecks for free.' },
+        ]}
+        secondTitle="How does resolution affect bottlenecks?"
+        secondParagraphs={[
+          'At 4K the GPU does almost all the work — CPU barely matters. At 1080p/240fps the CPU is under far more pressure than the GPU. This is why the same build can be GPU-bottlenecked at 4K but CPU-bottlenecked at 1080p high framerate.',
         ]}
       />
 
