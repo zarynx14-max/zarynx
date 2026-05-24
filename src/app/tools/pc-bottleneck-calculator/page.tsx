@@ -443,7 +443,7 @@ function RadarChart({ cpu, gpu, ram, fps }: { cpu: Cpu; gpu: Gpu; ram: Ram; fps:
         options: {
           responsive: true, maintainAspectRatio: true,
           plugins: { legend: { display: false }, tooltip: { backgroundColor: '#1A1E28', borderColor: 'rgba(255,255,255,.12)', borderWidth: 1, titleColor: '#F0F2F5', bodyColor: '#9AA3B2', padding: 12, cornerRadius: 8 } },
-          scales: { r: { min: 0, max: 90, beginAtZero: true, ticks: { stepSize: 30, color: '#F0F2F5', font: { size: 10 }, backdropColor: 'rgba(8,10,14,.75)', callback: (v: any) => v === 0 ? '' : v + '%' }, grid: { color: (ctx: any) => { const v = ctx.tick?.value; if (v===30) return 'rgba(255,208,96,.22)'; if (v===60) return 'rgba(255,80,80,.22)'; return 'rgba(255,255,255,.08)'; } }, angleLines: { color: 'rgba(255,255,255,.1)' }, pointLabels: { color: '#F0F2F5', font: { size: 12, weight: '600' } } } }
+          scales: { r: { min: 0, max: 90, beginAtZero: true, ticks: { stepSize: 30, color: '#F0F2F5', font: { size: 10 }, backdropColor: 'rgba(8,10,14,.75)', callback: (v: any) => v === 0 ? '' : v + '%' }, grid: { color: (ctx: any) => { const v = ctx.tick?.value; if (v===30) return 'rgba(255,208,96,.22)'; if (v===60) return 'rgba(255,80,80,.22)'; return 'rgba(255,255,255,.08)'; } }, angleLines: { color: 'rgba(255,255,255,.1)' }, pointLabels: { color: '#F0F2F5', font: { size: 12, weight: 600 as any } } } }
         }
       })
     }
