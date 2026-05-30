@@ -489,7 +489,15 @@ export default function BottleneckPage() {
         <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:10,marginBottom:24}}>
 
           <SelectCard label="Processor (CPU)" dotColor="#508CFF" bg="rgba(80,140,255,.06)" border={cpuId?'rgba(80,140,255,.35)':'rgba(255,255,255,.08)'}>
-            <select value={cpuId} onChange={e=>setCpuId(e.target.value)} style={{...selStyle, borderColor: cpuId?'rgba(80,140,255,.4)':'rgba(255,255,255,.18)'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:'.7rem'}}>
+              <svg viewBox="0 0 100 80" width="80" height="64" aria-hidden="true">
+                <g fill="rgba(80,140,255,.28)"><rect x="29" y="4" width="4" height="8" rx="1"/><rect x="39" y="4" width="4" height="8" rx="1"/><rect x="49" y="4" width="4" height="8" rx="1"/><rect x="59" y="4" width="4" height="8" rx="1"/><rect x="69" y="4" width="4" height="8" rx="1"/><rect x="29" y="68" width="4" height="8" rx="1"/><rect x="39" y="68" width="4" height="8" rx="1"/><rect x="49" y="68" width="4" height="8" rx="1"/><rect x="59" y="68" width="4" height="8" rx="1"/><rect x="69" y="68" width="4" height="8" rx="1"/><rect x="4" y="29" width="8" height="4" rx="1"/><rect x="4" y="39" width="8" height="4" rx="1"/><rect x="4" y="49" width="8" height="4" rx="1"/><rect x="4" y="59" width="8" height="4" rx="1"/><rect x="88" y="29" width="8" height="4" rx="1"/><rect x="88" y="39" width="8" height="4" rx="1"/><rect x="88" y="49" width="8" height="4" rx="1"/><rect x="88" y="59" width="8" height="4" rx="1"/></g>
+                <rect x="14" y="14" width="72" height="52" rx="4" fill="rgba(80,140,255,.14)" stroke="#508CFF" strokeWidth="1.3"/>
+                <rect x="24" y="22" width="52" height="36" rx="2" fill="rgba(80,140,255,.22)"/>
+                <line x1="24" y1="34" x2="76" y2="34" stroke="#508CFF" strokeWidth="0.6" opacity="0.4"/><line x1="24" y1="46" x2="76" y2="46" stroke="#508CFF" strokeWidth="0.6" opacity="0.4"/><line x1="42" y1="22" x2="42" y2="58" stroke="#508CFF" strokeWidth="0.6" opacity="0.4"/><line x1="58" y1="22" x2="58" y2="58" stroke="#508CFF" strokeWidth="0.6" opacity="0.4"/>
+                <text x="50" y="43" textAnchor="middle" style={{fill:'#508CFF',fontSize:'7px',fontFamily:'monospace',fontWeight:700}}>CPU</text>
+              </svg>
+            </div>            <select value={cpuId} onChange={e=>setCpuId(e.target.value)} style={{...selStyle, borderColor: cpuId?'rgba(80,140,255,.4)':'rgba(255,255,255,.18)'}}>
               <option value="" disabled>Select a CPU</option>
               {CPUS.map(g=>(
                 <optgroup key={g.group} label={g.group} style={{background:'#0F1218',color:'#8A94A6'}}>
@@ -502,7 +510,17 @@ export default function BottleneckPage() {
           </SelectCard>
 
           <SelectCard label="Graphics Card (GPU)" dotColor="#00E5A0" bg="rgba(0,229,160,.05)" border={gpuId?'rgba(0,229,160,.35)':'rgba(255,255,255,.08)'}>
-            <select value={gpuId} onChange={e=>setGpuId(e.target.value)} style={{...selStyle, borderColor: gpuId?'rgba(0,229,160,.4)':'rgba(255,255,255,.18)'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:'.7rem'}}>
+              <svg viewBox="0 0 138 72" width="118" height="62" aria-hidden="true">
+                <rect x="4" y="8" width="122" height="50" rx="3" fill="rgba(0,229,160,.08)" stroke="#00E5A0" strokeWidth="1.3"/>
+                <circle cx="38" cy="31" r="15" fill="rgba(0,229,160,.18)" stroke="#00E5A0" strokeWidth="0.9"/><circle cx="38" cy="31" r="5" fill="#00E5A0" opacity="0.55"/>
+                <g stroke="#00E5A0" strokeWidth="1.8" strokeLinecap="round" opacity="0.55"><line x1="38" y1="17" x2="38" y2="25"/><line x1="38" y1="37" x2="38" y2="45"/><line x1="24" y1="31" x2="32" y2="31"/><line x1="44" y1="31" x2="52" y2="31"/></g>
+                <circle cx="89" cy="31" r="15" fill="rgba(0,229,160,.18)" stroke="#00E5A0" strokeWidth="0.9"/><circle cx="89" cy="31" r="5" fill="#00E5A0" opacity="0.55"/>
+                <g stroke="#00E5A0" strokeWidth="1.8" strokeLinecap="round" opacity="0.55"><line x1="89" y1="17" x2="89" y2="25"/><line x1="89" y1="37" x2="89" y2="45"/><line x1="75" y1="31" x2="83" y2="31"/><line x1="95" y1="31" x2="103" y2="31"/></g>
+                <rect x="4" y="55" width="82" height="4" rx="1" fill="rgba(0,229,160,.18)"/>
+                <rect x="118" y="8" width="8" height="50" rx="2" fill="rgba(255,255,255,.12)"/>
+              </svg>
+            </div>            <select value={gpuId} onChange={e=>setGpuId(e.target.value)} style={{...selStyle, borderColor: gpuId?'rgba(0,229,160,.4)':'rgba(255,255,255,.18)'}}>
               <option value="" disabled>Select a GPU</option>
               {GPUS.map(g=>(
                 <optgroup key={g.group} label={g.group} style={{background:'#0F1218',color:'#8A94A6'}}>
@@ -515,7 +533,20 @@ export default function BottleneckPage() {
           </SelectCard>
 
           <SelectCard label="Memory (RAM)" dotColor="#FF7840" bg="rgba(255,120,64,.05)" border={ramId?'rgba(255,120,64,.35)':'rgba(255,255,255,.08)'}>
-            <select value={ramId} onChange={e=>setRamId(e.target.value)} style={{...selStyle, borderColor:'rgba(255,120,64,.4)'}}>
+            <div style={{display:'flex',justifyContent:'center',marginBottom:'.7rem'}}>
+              <svg viewBox="0 0 120 68" width="105" height="60" aria-hidden="true">
+                <rect x="5" y="10" width="110" height="8" rx="2" fill="rgba(255,120,64,.32)"/>
+                <rect x="5" y="16" width="110" height="38" rx="2" fill="rgba(255,120,64,.08)" stroke="#FF7840" strokeWidth="1.3"/>
+                <g fill="rgba(255,120,64,.22)" stroke="#FF7840" strokeWidth="0.6">
+                  <rect x="10" y="22" width="14" height="18" rx="1.5"/>
+                  <rect x="27" y="22" width="14" height="18" rx="1.5"/>
+                  <rect x="44" y="22" width="14" height="18" rx="1.5"/>
+                  <rect x="61" y="22" width="14" height="18" rx="1.5"/>
+                  <rect x="78" y="22" width="14" height="18" rx="1.5"/>
+                  <rect x="95" y="22" width="14" height="18" rx="1.5"/>
+                </g>
+              </svg>
+            </div>            <select value={ramId} onChange={e=>setRamId(e.target.value)} style={{...selStyle, borderColor:'rgba(255,120,64,.4)'}}>
               {RAMS.map(r=><option key={r.id} value={r.id} style={{background:'#161B23'}}>{r.name}</option>)}
             </select>
             {ram && <div style={{marginTop:8,fontSize:11,color:'rgba(255,255,255,.35)',fontFamily:'monospace'}}>{ram.gen} · {ram.cap}GB · {ram.label}</div>}
