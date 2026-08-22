@@ -52,6 +52,20 @@ export default function RootLayout({
   return (
     <html lang="en" className={inter.variable}>
       <head>
+        {/* Organization structured data — tells Google to show the Zarynx logo in search results */}
+        <Script
+          id="organization-schema"
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              '@context': 'https://schema.org',
+              '@type': 'Organization',
+              name: siteConfig.name,
+              url: siteConfig.url,
+              logo: `${siteConfig.url}/logo.png`,
+            }),
+          }}
+        />
         {/* Google Tag Manager */}
         <Script
           id="gtm-script"
