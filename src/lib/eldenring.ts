@@ -17,7 +17,9 @@
 //    cumulative totals shown there.
 //  - Starting classes: each class's stats add up to (79 + starting level).
 //
-// NOT INCLUDED YET: weapons, armor, talismans, spells, attack rating.
+// Armor and talisman lists come from saved wiki pages (see src/data/eldenringGear.ts).
+// Talisman effects are read from the wiki's effect text by parseTalismanEffect().
+// NOT INCLUDED YET: weapons, spells, attack rating.
 
 export const STAT_KEYS = [
   'vigor', 'mind', 'endurance', 'strength', 'dexterity', 'intelligence', 'faith', 'arcane',
@@ -251,12 +253,95 @@ export const EXAMPLE_SPREADS: { id: string; name: string; note: string; target: 
     target: { vigor: 40, mind: 25, endurance: 20, strength: 12, dexterity: 12, intelligence: 7, faith: 60, arcane: 9 } },
 ]
 
+// ── TALISMANS ────────────────────────────────────────────────────────────────
+// Percent values are plain numbers (6 means +6%). Different talisman families
+// multiply with each other (Fextralife: Erdtree's Favor stacks multiplicatively
+// with the amber medallions and Arsenal Charm; at 99 Vigor/Endurance the +2
+// Favor adds exactly 84 HP, 17 stamina and 12.8 equip load, which this matches).
+export interface TalismanMods {
+  hp?: number
+  fp?: number
+  stamina?: number
+  equip?: number
+  stats?: Partial<Stats>
+}
+
+const STAT_WORDS: Record<string, StatKey> = {
+  vigor: 'vigor', mind: 'mind', endurance: 'endurance', strength: 'strength',
+  dexterity: 'dexterity', intelligence: 'intelligence', faith: 'faith', arcane: 'arcane',
+}
+
+export function parseTalismanEffect(effect: string): TalismanMods | null {
+  const mods: TalismanMods = {}
+  let m = effect.match(/Raises maximum HP \(([\d.]+)%\), Stamina \(([\d.]+)%\), and Equip Load \(([\d.]+)%\)/i)
+  if (m) { mods.hp = Number(m[1]); mods.stamina = Number(m[2]); mods.equip = Number(m[3]) }
+  m = effect.match(/maximum HP by ([\d.]+)%/i); if (m) mods.hp = Number(m[1])
+  m = effect.match(/maximum HP is reduced by ([\d.]+)%/i); if (m) mods.hp = -Number(m[1])
+  m = effect.match(/maximum FP by ([\d.]+)%/i); if (m) mods.fp = Number(m[1])
+  m = effect.match(/maximum stamina by ([\d.]+)%/i); if (m) mods.stamina = Number(m[1])
+  m = effect.match(/maximum Equip(?:ment)? Load by ([\d.]+)%/i); if (m) mods.equip = Number(m[1])
+  m = effect.match(/Raises ([A-Za-z, ]+?)\s*(?:by|\+)\s*(\d+)/i)
+  if (m) {
+    const words = m[1].split(/,|\band\b/).map(w => w.trim().toLowerCase()).filter(Boolean)
+    if (words.length > 0 && words.every(w => w in STAT_WORDS)) {
+      mods.stats = {}
+      for (const w of words) mods.stats[STAT_WORDS[w]] = Number(m[2])
+    }
+  }
+  return Object.keys(mods).length ? mods : null
+}
+
+/** Variants of one talisman (for example +1, +2, +3) cannot be equipped together. */
+export function talismanFamily(name: string): string {
+  const n = name.replace(/\s*\+\d+$/, '').trim()
+  const map: Record<string, string> = {
+    "Great-Jar's Arsenal": 'Arsenal Charm',
+    "Radagon's Soreseal": "Radagon's Scarseal",
+    "Marika's Soreseal": "Marika's Scarseal",
+  }
+  return map[n] ?? n
+}
+
+/** Attribute values after talisman bonuses (an attribute cannot go above 99). */
+export function effectiveStats(base: Stats, mods: TalismanMods[]): Stats {
+  const out = { ...base }
+  for (const m of mods) {
+    if (!m.stats) continue
+    for (const k of STAT_KEYS) {
+      const add = m.stats[k]
+      if (add) out[k] = Math.min(MAX_STAT, out[k] + add)
+    }
+  }
+  return out
+}
+
+export interface GearBuildResult extends BuildResult { effective: Stats }
+
+/** Level and runes use your real attributes; HP, FP, stamina and equip load use attributes plus talismans. */
+export function computeBuildWithGear(classId: string, base: Stats, mods: TalismanMods[]): GearBuildResult {
+  const plain = computeBuild(classId, base)
+  const eff = effectiveStats(base, mods)
+  const mult = (pick: (m: TalismanMods) => number | undefined) =>
+    mods.reduce((t, m) => t * (1 + (pick(m) ?? 0) / 100), 1)
+  const EPS = 1e-9
+  return {
+    ...plain,
+    effective: eff,
+    hp: Math.floor(hpFor(eff.vigor) * mult(m => m.hp) + EPS),
+    fp: Math.floor(fpFor(eff.mind) * mult(m => m.fp) + EPS),
+    stamina: Math.floor(staminaFor(eff.endurance) * mult(m => m.stamina) + EPS),
+    equipLoad: Math.round(equipLoadFor(eff.endurance) * mult(m => m.equip) * 10) / 10,
+  }
+}
+
 // ── SHARE LINKS ──────────────────────────────────────────────────────────────
 export interface BuildState {
   classId: string
   stats: Stats
-  gearWeight: number
+  gearWeight: number          // weapons, shields and anything else typed in by hand
   targetLevel: number | null
+  armor: string[]             // head, chest, arms, legs ('' = empty)
+  talismans: string[]         // up to 4 ('' = empty)
 }
 
 export function encodeBuild(b: BuildState): string {
@@ -265,6 +350,8 @@ export function encodeBuild(b: BuildState): string {
   p.set('s', STAT_KEYS.map(k => b.stats[k]).join(','))
   if (b.gearWeight > 0) p.set('w', String(b.gearWeight))
   if (b.targetLevel) p.set('t', String(b.targetLevel))
+  if (b.armor.some(Boolean)) p.set('a', b.armor.join('~'))
+  if (b.talismans.some(Boolean)) p.set('tl', b.talismans.join('~'))
   return p.toString()
 }
 
@@ -283,10 +370,14 @@ export function decodeBuild(query: string): BuildState | null {
   })
   const w = Number(p.get('w') ?? 0)
   const t = Number(p.get('t') ?? 0)
+  const armor = (p.get('a') ?? '').split('~')
+  const tal = (p.get('tl') ?? '').split('~')
   return {
     classId: cl.id,
     stats,
     gearWeight: Number.isFinite(w) && w > 0 ? w : 0,
     targetLevel: Number.isFinite(t) && t >= 1 && t <= MAX_LEVEL ? Math.round(t) : null,
+    armor: [0, 1, 2, 3].map(i => armor[i] ?? ''),
+    talismans: [0, 1, 2, 3].map(i => tal[i] ?? ''),
   }
 }

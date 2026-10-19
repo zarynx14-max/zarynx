@@ -8,11 +8,13 @@ import {
   ToolLayout, ToolSection, SectionLabel,
 } from '@/components/tool'
 import {
-  type Stats, type StatKey, type BuildState,
+  type Stats, type StatKey, type BuildState, type TalismanMods,
   STAT_KEYS, STAT_LABELS, MAX_STAT, MAX_LEVEL, CLASSES, SOFT_CAPS, EXAMPLE_SPREADS,
-  getClass, classStats, computeBuild, nextPointGain, meetRequirements,
+  getClass, classStats, computeBuildWithGear, nextPointGain, meetRequirements,
   rankClasses, rollTypeFor, hpFor, encodeBuild, decodeBuild,
+  parseTalismanEffect, talismanFamily,
 } from '@/lib/eldenring'
+import { ARMOR_ROWS, TALISMAN_ROWS } from '@/data/eldenringGear'
 
 const SAVE_KEY = 'zarynx_er_builds'
 const DAMAGE_KEYS = ['strength', 'dexterity', 'intelligence', 'faith', 'arcane'] as const
@@ -21,6 +23,43 @@ type Snap = { classId: string; stats: Stats }
 type Saved = { name: string; q: string }
 
 const fmt = (n: number) => n.toLocaleString('en-US')
+
+const SLOT_CODES = ['h', 'c', 'a', 'l'] as const
+const SLOT_LABELS = ['Head', 'Chest', 'Arms', 'Legs']
+const ARMOR = SLOT_CODES.map(code =>
+  ARMOR_ROWS.filter(r => r[1] === code).map(r => ({ name: r[0], weight: r[2], poise: r[3] })).sort((a, b) => a.name.localeCompare(b.name)),
+)
+const ARMOR_MAP = ARMOR.map(list => new Map(list.map(a => [a.name, a])))
+const TALISMANS = TALISMAN_ROWS.map(r => ({
+  name: r[0], weight: r[1], effect: r[2], dlc: r[3] === 1,
+  family: talismanFamily(r[0]), mods: parseTalismanEffect(r[2]),
+})).sort((a, b) => a.name.localeCompare(b.name))
+const TAL_MAP = new Map(TALISMANS.map(t => [t.name, t]))
+
+// ── ITEM PICKER (type to search, pick from the list) ────────────────────────
+function ItemInput({ id, label, value, options, hint, onChange }: {
+  id: string; label: string; value: string; options: string[]; hint?: string; onChange: (v: string) => void
+}) {
+  const [text, setText] = useState(value)
+  useEffect(() => { setText(value) }, [value])
+  return (
+    <div>
+      <label htmlFor={id} className="mb-[4px] block text-[11px] text-[var(--t2)]">{label}</label>
+      <input
+        id={id} list={`${id}-list`} value={text} placeholder="Type to search..." autoComplete="off"
+        onChange={e => {
+          setText(e.target.value)
+          if (e.target.value === '') onChange('')
+          else if (options.includes(e.target.value)) onChange(e.target.value)
+        }}
+        onBlur={() => { if (text !== value && !options.includes(text)) setText(value) }}
+        className="min-h-[44px] w-full rounded-[7px] border border-[var(--border2)] bg-[var(--bg3)] px-3 py-2 text-[12px] text-[var(--t1)]"
+      />
+      <datalist id={`${id}-list`}>{options.map(o => <option key={o} value={o} />)}</datalist>
+      {hint && <p className="mt-[3px] text-[10px] text-[var(--t2)]">{hint}</p>}
+    </div>
+  )
+}
 
 // ── ATTRIBUTE ROW ────────────────────────────────────────────────────────────
 function StatRow({ k, value, base, note, onChange }: {
@@ -98,6 +137,9 @@ export default function EldenRingBuildClient() {
   const [past, setPast] = useState<Snap[]>([])
   const [future, setFuture] = useState<Snap[]>([])
   const [gearText, setGearText] = useState('')
+  const [armorSel, setArmorSel] = useState<string[]>(['', '', '', ''])
+  const [talSel, setTalSel] = useState<string[]>(['', '', '', ''])
+  const [talError, setTalError] = useState('')
   const [targetText, setTargetText] = useState('')
   const [req, setReq] = useState<Record<DamageKey, string>>({ strength: '', dexterity: '', intelligence: '', faith: '', arcane: '' })
   const [saved, setSaved] = useState<Saved[]>([])
@@ -142,6 +184,17 @@ export default function EldenRingBuildClient() {
     commit({ classId: id, stats })
   }
 
+  function setTal(i: number, name: string) {
+    if (name) {
+      const fam = TAL_MAP.get(name)?.family
+      const clash = talSel.findIndex((n, j) => j !== i && n && TAL_MAP.get(n)?.family === fam)
+      if (clash >= 0) { setTalError(`${name} and ${talSel[clash]} are versions of the same talisman, so only one can be equipped.`); return }
+    }
+    setTalError('')
+    setTalSel(t => t.map((x, j) => (j === i ? name : x)))
+  }
+  function setArmor(i: number, name: string) { setArmorSel(a => a.map((x, j) => (j === i ? name : x))) }
+
   function resetBuild() { commit({ classId: snap.classId, stats: classStats(snap.classId) }) }
 
   // load from URL + saved builds
@@ -152,6 +205,8 @@ export default function EldenRingBuildClient() {
         setSnap({ classId: d.classId, stats: d.stats })
         if (d.gearWeight) setGearText(String(d.gearWeight))
         if (d.targetLevel) setTargetText(String(d.targetLevel))
+        setArmorSel(d.armor.map((n, i) => (ARMOR_MAP[i].has(n) ? n : '')))
+        setTalSel(d.talismans.map(n => (TAL_MAP.has(n) ? n : '')))
       }
       const raw = localStorage.getItem(SAVE_KEY)
       if (raw) setSaved(JSON.parse(raw))
@@ -163,18 +218,27 @@ export default function EldenRingBuildClient() {
   useEffect(() => {
     if (!loaded.current) return
     try {
-      const q = encodeBuild({ classId: snap.classId, stats: snap.stats, gearWeight, targetLevel })
+      const q = encodeBuild({ classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel })
       window.history.replaceState(null, '', `${window.location.pathname}?${q}`)
     } catch { /* ignore */ }
-  }, [snap, gearWeight, targetLevel])
+  }, [snap, gearWeight, targetLevel, armorSel, talSel])
 
   function persist(next: Saved[]) {
     setSaved(next)
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(next)) } catch { /* ignore */ }
   }
 
-  const state: BuildState = { classId: snap.classId, stats: snap.stats, gearWeight, targetLevel }
-  const build = useMemo(() => computeBuild(snap.classId, snap.stats), [snap])
+  const state: BuildState = { classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel }
+  const equippedTals = talSel.map(n => TAL_MAP.get(n)).filter((t): t is NonNullable<typeof t> => !!t)
+  const mods = useMemo(() => equippedTals.map(t => t.mods).filter((m): m is TalismanMods => !!m), [talSel]) // eslint-disable-line react-hooks/exhaustive-deps
+  const build = useMemo(() => computeBuildWithGear(snap.classId, snap.stats, mods), [snap, mods])
+  const eff = build.effective
+  const armorPieces = armorSel.map((n, i) => ARMOR_MAP[i].get(n))
+  const armorWeight = armorPieces.reduce((t, a) => t + (a?.weight ?? 0), 0)
+  const talWeight = equippedTals.reduce((t, x) => t + x.weight, 0)
+  const poiseTotal = armorPieces.reduce((t, a) => t + (a?.poise ?? 0), 0)
+  const poiseUnknown = armorPieces.some(a => a && a.poise === null)
+  const totalWeight = Math.round((armorWeight + talWeight + gearWeight) * 10) / 10
   const rankings = useMemo(() => rankClasses(snap.stats), [snap.stats])
   const best = rankings[0]
   const current = rankings.find(r => r.cls.id === snap.classId) ?? rankings[0]
@@ -186,8 +250,8 @@ export default function EldenRingBuildClient() {
     if (Number.isFinite(n) && n > 0) reqNums[k] = Math.min(MAX_STAT, n)
   })
   const hasReq = Object.keys(reqNums).length > 0
-  const unmet = DAMAGE_KEYS.filter(k => (reqNums[k] ?? 0) > snap.stats[k])
-  const pointsMissing = unmet.reduce((t, k) => t + ((reqNums[k] ?? 0) - snap.stats[k]), 0)
+  const unmet = DAMAGE_KEYS.filter(k => (reqNums[k] ?? 0) > eff[k])
+  const pointsMissing = unmet.reduce((t, k) => t + ((reqNums[k] ?? 0) - eff[k]), 0)
 
   function optimizeKeepClass() {
     if (!hasReq) return
@@ -204,9 +268,9 @@ export default function EldenRingBuildClient() {
   }
 
   const maxLoad = build.equipLoad
-  const loadPct = gearWeight > 0 ? (gearWeight / maxLoad) * 100 : 0
-  const roll = gearWeight > 0 ? rollTypeFor(gearWeight, maxLoad) : null
-  const spareBeforeHeavy = gearWeight > 0 ? Math.round((maxLoad * 0.7 - gearWeight) * 10) / 10 : null
+  const loadPct = totalWeight > 0 ? (totalWeight / maxLoad) * 100 : 0
+  const roll = totalWeight > 0 ? rollTypeFor(totalWeight, maxLoad) : null
+  const spareBeforeHeavy = totalWeight > 0 ? Math.round((maxLoad * 0.7 - totalWeight) * 10) / 10 : null
 
   const levelsLeft = targetLevel ? targetLevel - build.level : null
 
@@ -217,10 +281,12 @@ export default function EldenRingBuildClient() {
     const text = kind === 'link' ? shareLink() : [
       `Elden Ring build (${cls.name} start, level ${build.level})`,
       STAT_KEYS.map(k => `${STAT_LABELS[k]} ${snap.stats[k]}`).join(' · '),
-      `HP ${fmt(build.hp)} · FP ${fmt(build.fp)} · Stamina ${build.stamina} · Equip load ${maxLoad.toFixed(1)}`,
+      `HP ${fmt(build.hp)} · FP ${fmt(build.fp)} · Stamina ${build.stamina} · Equip load ${totalWeight.toFixed(1)} / ${maxLoad.toFixed(1)}`,
+      armorSel.some(Boolean) ? `Armor: ${armorSel.filter(Boolean).join(', ')}` : '',
+      talSel.some(Boolean) ? `Talismans: ${talSel.filter(Boolean).join(', ')}` : '',
       `Runes needed: ${fmt(build.totalRunes)}`,
       shareLink(),
-    ].join('\n')
+    ].filter(Boolean).join('\n')
     navigator.clipboard.writeText(text).catch(() => {})
     setCopied(kind)
     setTimeout(() => setCopied(''), 2000)
@@ -237,6 +303,8 @@ export default function EldenRingBuildClient() {
     commit({ classId: d.classId, stats: d.stats })
     setGearText(d.gearWeight ? String(d.gearWeight) : '')
     setTargetText(d.targetLevel ? String(d.targetLevel) : '')
+    setArmorSel(d.armor.map((n, i) => (ARMOR_MAP[i].has(n) ? n : '')))
+    setTalSel(d.talismans.map(n => (TAL_MAP.has(n) ? n : '')))
   }
   function handleImport() {
     const d = decodeBuild(importText.trim())
@@ -248,7 +316,7 @@ export default function EldenRingBuildClient() {
 
   const cmp = compareIdx !== null && saved[compareIdx] ? (() => {
     const d = decodeBuild(saved[compareIdx].q)
-    return d ? { name: saved[compareIdx].name, b: computeBuild(d.classId, d.stats), cls: getClass(d.classId).name } : null
+    return d ? { name: saved[compareIdx].name, b: computeBuildWithGear(d.classId, d.stats, d.talismans.map(n => TAL_MAP.get(n)?.mods).filter((m): m is TalismanMods => !!m)), cls: getClass(d.classId).name } : null
   })() : null
 
   // suggestions (all computed from the verified tables)
@@ -268,7 +336,7 @@ export default function EldenRingBuildClient() {
 
       <ToolHeader
         name="Elden Ring Build Optimizer"
-        description="Find the best starting class and the lowest level for your weapon's requirements, with exact HP, FP, stamina, equip load and rune costs."
+        description="Find the best starting class and the lowest level for your weapon's requirements. Pick armor and talismans to see exact HP, FP, stamina, equip load and rune costs."
         categoryLabel="Build Tools"
         categoryColor="mint"
         typeLabel="Optimizer"
@@ -357,15 +425,23 @@ export default function EldenRingBuildClient() {
 
                 {STAT_KEYS.map(k => {
                   let note: string
+                  const bonus = eff[k] - snap.stats[k]
                   if (k === 'vigor' || k === 'mind' || k === 'endurance') {
-                    const g = nextPointGain(k, snap.stats)
-                    note = g ? `Next point: ${g}` : 'At maximum'
+                    if (snap.stats[k] >= MAX_STAT) note = 'At maximum'
+                    else if (eff[k] >= MAX_STAT) note = 'No gain: talisman bonus already reaches 99'
+                    else {
+                      const up = computeBuildWithGear(snap.classId, { ...snap.stats, [k]: snap.stats[k] + 1 }, mods)
+                      if (k === 'vigor') note = `Next point: +${fmt(up.hp - build.hp)} HP`
+                      else if (k === 'mind') note = `Next point: +${fmt(up.fp - build.fp)} FP`
+                      else note = `Next point: +${up.stamina - build.stamina} stamina, +${(Math.round((up.equipLoad - build.equipLoad) * 10) / 10).toFixed(1)} equip load`
+                    }
                   } else {
                     const want = reqNums[k as DamageKey]
                     note = want
-                      ? (snap.stats[k] >= want ? `Meets weapon requirement (${want})` : `Weapon needs ${want}, ${want - snap.stats[k]} more`)
+                      ? (eff[k] >= want ? `Meets weapon requirement (${want})` : `Weapon needs ${want}, ${want - eff[k]} more`)
                       : 'Attack gain depends on your weapon'
                   }
+                  if (bonus > 0) note = `+${bonus} from talismans (counts as ${eff[k]}). ${note}`
                   return <StatRow key={k} k={k} value={snap.stats[k]} base={cls.stats[k]} note={note} onChange={v2 => setStat(k, v2)} />
                 })}
                 <p className="mb-1 text-[11px] leading-[1.5] text-[var(--t2)]">
@@ -392,9 +468,38 @@ export default function EldenRingBuildClient() {
               </section>
 
               <section className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-[18px]" aria-labelledby="er-gear">
-                <h2 id="er-gear" className="mb-2 text-[14px] font-medium text-[var(--t1)]">Gear</h2>
-                <p className="text-[12px] leading-[1.6] text-[var(--t2)]">
-                  Weapon, armor, talisman and spell lists, attack rating and defense are not in this version yet. They need the game&apos;s full data, and we are not adding numbers we cannot check. For now, type your weapon&apos;s requirements above and your total gear weight in the results panel.
+                <h2 id="er-gear" className="mb-1 text-[14px] font-medium text-[var(--t1)]">Armor and talismans</h2>
+                <p className="mb-3 text-[12px] text-[var(--t2)]">Type a name and pick it from the list. Weights add to your equip load, and talismans change your stats.</p>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {SLOT_LABELS.map((label, i) => {
+                    const piece = armorPieces[i]
+                    return (
+                      <ItemInput
+                        key={label} id={`er-armor-${i}`} label={label} value={armorSel[i]}
+                        options={ARMOR[i].map(a => a.name)}
+                        hint={piece ? `Weight ${piece.weight}, poise ${piece.poise ?? 'unknown'}` : `${ARMOR[i].length} pieces`}
+                        onChange={v2 => setArmor(i, v2)}
+                      />
+                    )
+                  })}
+                </div>
+                <h3 className="mb-2 mt-4 text-[12px] text-[var(--t2)]">Talismans (4 slots)</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {[0, 1, 2, 3].map(i => {
+                    const t = TAL_MAP.get(talSel[i])
+                    return (
+                      <ItemInput
+                        key={i} id={`er-tal-${i}`} label={`Slot ${i + 1}`} value={talSel[i]}
+                        options={TALISMANS.map(x => x.name)}
+                        hint={t ? `Weight ${t.weight}${t.dlc ? ' · Shadow of the Erdtree' : ''}. ${t.effect}` : `${TALISMANS.length} talismans`}
+                        onChange={v2 => setTal(i, v2)}
+                      />
+                    )
+                  })}
+                </div>
+                {talError && <p className="mt-2 text-[11px] text-[#FF8A80]">{talError}</p>}
+                <p className="mt-3 text-[11px] leading-[1.5] text-[var(--t2)]">
+                  Weapons, shields, spells and attack rating are not in this version yet. Type their combined weight in the results panel.
                 </p>
               </section>
 
@@ -470,12 +575,12 @@ export default function EldenRingBuildClient() {
                 <Tile label="Stamina" value={String(build.stamina)} />
               </div>
 
-              <label htmlFor="er-weight" className="mb-[6px] block text-[12px] text-[var(--t2)]">Total gear weight (from the in-game menu)</label>
+              <label htmlFor="er-weight" className="mb-[6px] block text-[12px] text-[var(--t2)]">Weapons and other gear weight (type it in)</label>
               <input id="er-weight" type="number" inputMode="decimal" min={0} step={0.1} placeholder="0.0" value={gearText} onChange={e => setGearText(e.target.value)} className={fieldCls + ' mb-3'} />
 
               <div className="mb-[6px] flex justify-between text-[12px]">
                 <span className="text-[var(--t2)]">Equip load</span>
-                <span className="text-[var(--t1)]">{gearWeight > 0 ? gearWeight.toFixed(1) : '0.0'} / {maxLoad.toFixed(1)}{roll && <span className="ml-2 text-[var(--blue)]">{roll} roll</span>}</span>
+                <span className="text-[var(--t1)]">{totalWeight.toFixed(1)} / {maxLoad.toFixed(1)}{roll && <span className="ml-2 text-[var(--blue)]">{roll} roll</span>}</span>
               </div>
               <div className="relative flex h-[8px] overflow-hidden rounded-[4px]" role="img" aria-label={roll ? `${roll} roll, ${loadPct.toFixed(1)} percent of equip load` : 'Equip load'}>
                 <span style={{ width: '30%', background: 'var(--mint)' }} />
@@ -483,9 +588,12 @@ export default function EldenRingBuildClient() {
                 <span style={{ width: '30%', background: 'var(--orange)' }} />
               </div>
               <div className="relative h-[10px]">
-                {gearWeight > 0 && <span className="absolute top-[2px] h-[10px] w-[2px] bg-[var(--t1)]" style={{ left: `${Math.min(100, loadPct)}%` }} />}
+                {totalWeight > 0 && <span className="absolute top-[2px] h-[10px] w-[2px] bg-[var(--t1)]" style={{ left: `${Math.min(100, loadPct)}%` }} />}
               </div>
-              <div className="mb-[14px] flex justify-between text-[10px] text-[var(--t2)]"><span>Light (under 30%)</span><span>Medium (to 70%)</span><span>Heavy</span></div>
+              <div className="mb-[6px] flex justify-between text-[10px] text-[var(--t2)]"><span>Light (under 30%)</span><span>Medium (to 70%)</span><span>Heavy</span></div>
+              <p className="mb-[14px] text-[11px] text-[var(--t2)]">
+                Armor {armorWeight.toFixed(1)} + talismans {talWeight.toFixed(1)} + other {gearWeight.toFixed(1)}. Armor poise {poiseTotal}{poiseUnknown ? ' (some pieces unknown)' : ''}.
+              </p>
 
               <h3 className="mb-1 text-[13px] font-medium text-[var(--t1)]">Suggestions</h3>
               <div>
@@ -547,7 +655,9 @@ export default function EldenRingBuildClient() {
         <ToolSection last>
           <ToolFaq
             items={[
-              { question: 'Does this include weapons, armor and attack rating?', answer: 'Not yet. This version covers the character side: level, runes, HP, FP, stamina, equip load, class choice and weapon requirements you type in. Item data and attack rating will be added once we have a complete, checked data source.' },
+              { question: 'Does this include weapons and attack rating?', answer: 'Not yet. Armor (weight and poise) and talismans (weight and stat effects) are included. Weapons, shields, spells and attack rating are planned. For now, type the weapon requirements and the combined weapon weight yourself.' },
+              { question: 'How do talismans change the numbers?', answer: 'Stat talismans like Radagon\'s Soreseal raise the attribute used for HP, FP, stamina, equip load and weapon requirements, but not your level. Percent talismans (HP, FP, stamina, equip load) multiply with each other. Different versions of the same talisman cannot be equipped together.' },
+              { question: 'Is the armor list complete?', answer: 'It has 705 pieces, including Shadow of the Erdtree. A few pieces are missing because the source page had broken data for them. We would rather leave a piece out than show a wrong weight.' },
               { question: 'How are rune costs calculated?', answer: 'We use the game\'s level-up formula. It matches the published level table, for example 673 runes from level 1 to 2 and 1,038 runes from level 12 to 13.' },
               { question: 'Why do the soft cap ticks only show on three stats?', answer: 'HP, FP, stamina and equip load have published tables with clear soft caps. Attack from Strength, Dexterity, Intelligence, Faith and Arcane depends on the weapon, so we do not draw a cap that would be wrong for many weapons.' },
               { question: 'What does Optimize do?', answer: 'It sets each attribute to the higher of your class\'s starting value and the requirement you typed, which is the lowest level that can use the weapon. "Best class" also picks the class that makes this cheapest.' },

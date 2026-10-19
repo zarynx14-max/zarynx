@@ -94,7 +94,7 @@ export const tools: Tool[] = [
     id: 'elden-ring-build-optimizer',
     name: 'Elden Ring Build Optimizer',
     slug: 'elden-ring-build-optimizer',
-    description: 'Plan an Elden Ring build: best starting class, lowest level for your weapon requirements, and exact HP, FP, stamina, equip load and rune costs.',
+    description: 'Plan an Elden Ring build: best starting class, lowest level for your weapon requirements, armor and talismans, and exact HP, FP, stamina, equip load and rune costs.',
     category: 'game',
     badge: 'Game tool',
     badgeType: 'gray',

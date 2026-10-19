@@ -1,6 +1,7 @@
 // Run:  node --experimental-strip-types scripts/verify-eldenring.mjs
 // Checks the engine against numbers copied separately from the wiki pages.
 import * as E from '../src/lib/eldenring.ts'
+import { ARMOR_ROWS, TALISMAN_ROWS } from '../src/data/eldenringGear.ts'
 
 let pass = 0, fail = 0
 function eq(name, got, want) {
@@ -72,10 +73,68 @@ eq('roll light', E.rollTypeFor(29, 100), 'Light'); eq('roll medium', E.rollTypeF
 eq('roll heavy', E.rollTypeFor(70, 100), 'Heavy'); eq('roll over', E.rollTypeFor(100.1, 100), 'Overloaded')
 const st = E.meetRequirements('samurai', { strength: 20, dexterity: 30 })
 eq('meet req str', st.strength, 20); eq('meet req keeps base', st.vigor, 12)
-const enc = E.encodeBuild({ classId: 'samurai', stats: st, gearWeight: 55.5, targetLevel: 90 })
+const enc = E.encodeBuild({ classId: 'samurai', stats: st, gearWeight: 55.5, targetLevel: 90, armor: ['Steel Helm','','',''], talismans: ['Arsenal Charm','','',''] })
 const dec = E.decodeBuild('?' + enc)
 eq('share roundtrip', JSON.stringify(dec?.stats), JSON.stringify(st))
 eq('share weight', dec?.gearWeight, 55.5)
+eq('share armor', dec?.armor[0], 'Steel Helm'); eq('share tal', dec?.talismans[0], 'Arsenal Charm')
+
+
+// ── Talismans: effects read from the wiki text ──
+const tal = Object.fromEntries(TALISMAN_ROWS.map(r => [r[0], E.parseTalismanEffect(r[2])]))
+const modOf = (n, k) => tal[n]?.[k]
+const series = [
+  ['Crimson Amber Medallion', 'hp', [6, 7, 8, 10]],
+  ['Cerulean Amber Medallion', 'fp', [7, 9, 11, 12.5]],
+  ['Viridian Amber Medallion', 'stamina', [11, 13, 15, 17]],
+]
+for (const [base, key, vals] of series) {
+  ;[base, base + ' +1', base + ' +2', base + ' +3'].forEach((n, i) => eq(`${n} ${key}`, modOf(n, key), vals[i]))
+}
+eq('Arsenal Charm', modOf('Arsenal Charm', 'equip'), 15)
+eq('Arsenal Charm+1', modOf('Arsenal Charm+1', 'equip'), 17)
+eq("Great-Jar's Arsenal", modOf("Great-Jar's Arsenal", 'equip'), 19)
+eq('Favor +2 hp', modOf("Erdtree's Favor +2", 'hp'), 4); eq('Favor +2 stamina', modOf("Erdtree's Favor +2", 'stamina'), 10); eq('Favor +2 equip', modOf("Erdtree's Favor +2", 'equip'), 8)
+eq('Favor hp', modOf("Erdtree's Favor", 'hp'), 3); eq('Favor stamina', modOf("Erdtree's Favor", 'stamina'), 7); eq('Favor equip', modOf("Erdtree's Favor", 'equip'), 5)
+eq('Soreseal vig', tal["Radagon's Soreseal"].stats.vigor, 5); eq('Soreseal end', tal["Radagon's Soreseal"].stats.endurance, 5)
+eq('Scarseal str', tal["Radagon's Scarseal"].stats.strength, 3); eq('Scarseal mind none', tal["Radagon's Scarseal"].stats.mind, undefined)
+eq('Marika Soreseal mind', tal["Marika's Soreseal"].stats.mind, 5); eq('Marika Scarseal arcane', tal["Marika's Scarseal"].stats.arcane, 3)
+for (const [n, k] of [['Starscourge Heirloom','strength'],['Prosthesis-Wearer Heirloom','dexterity'],['Stargazer Heirloom','intelligence'],['Two Fingers Heirloom','faith'],['Outer God Heirloom','arcane']])
+  eq(`${n} ${k}`, tal[n].stats[k], 5)
+eq('Primal Glintstone Blade hp', modOf('Primal Glintstone Blade', 'hp'), -15)
+eq('Turtle has no stat mods', tal['Green Turtle Talisman'], null)
+eq('family variants', E.talismanFamily('Crimson Amber Medallion +2'), E.talismanFamily('Crimson Amber Medallion'))
+eq('family arsenal', E.talismanFamily("Great-Jar's Arsenal"), E.talismanFamily('Arsenal Charm+1'))
+eq('family seals', E.talismanFamily("Radagon's Soreseal"), E.talismanFamily("Radagon's Scarseal"))
+eq('talisman count', TALISMAN_ROWS.length, 155)
+
+// Fextralife example: at 99 Vigor and 99 Endurance, Erdtree's Favor +2 adds 84 HP, 17 stamina, 12.8 equip load
+const max99 = E.classStats('wretch'); for (const k of E.STAT_KEYS) max99[k] = 99
+const plain99 = E.computeBuildWithGear('wretch', max99, [])
+const fav99 = E.computeBuildWithGear('wretch', max99, [E.parseTalismanEffect(TALISMAN_ROWS.find(r => r[0] === "Erdtree's Favor +2")[2])])
+eq('favor +84 hp', fav99.hp - plain99.hp, 84); eq('favor +17 stamina', fav99.stamina - plain99.stamina, 17)
+eq('favor +12.8 equip', Math.round((fav99.equipLoad - plain99.equipLoad) * 10) / 10, 12.8)
+const soreseal = E.parseTalismanEffect("Raises Vigor, Endurance, Strength, and Dexterity by 5, but increases all damage taken by 15%.")
+const w40 = E.classStats('wretch'); w40.vigor = 40; w40.endurance = 25
+const withSore = E.computeBuildWithGear('wretch', w40, [soreseal])
+eq('soreseal hp uses vigor 45', withSore.hp, E.hpFor(45)); eq('soreseal equip uses end 30', withSore.equipLoad, E.equipLoadFor(30))
+eq('soreseal does not change level', withSore.level, E.computeBuild('wretch', w40).level)
+const stack = E.computeBuildWithGear('wretch', max99, [{ hp: 8 }, { hp: 4 }])
+eq('hp talismans multiply', stack.hp, Math.floor(2100 * 1.08 * 1.04))
+const capped = E.computeBuildWithGear('wretch', max99, [soreseal]); eq('effective cap 99', capped.effective.vigor, 99)
+
+// ── Armor data sanity ──
+eq('armor rows', ARMOR_ROWS.length, 705)
+for (const r of ARMOR_ROWS) {
+  if (!(r[2] > 0 && r[2] < 100)) { fail++; console.log('FAIL armor weight', r[0], r[2]) } else pass++
+  if (!['h', 'c', 'a', 'l'].includes(r[1])) { fail++; console.log('FAIL armor slot', r[0]) } else pass++
+  if (r[0].includes('[[')) { fail++; console.log('FAIL armor name', r[0]) } else pass++
+}
+const names = ARMOR_ROWS.map(r => r[1] + r[0]); eq('armor names unique', new Set(names).size, names.length)
+const got = n => ARMOR_ROWS.find(r => r[0] === n)
+eq('Albinauric Mask weight', got('Albinauric Mask')?.[2], 3.8); eq('Albinauric Mask poise', got('Albinauric Mask')?.[3], 3)
+eq('Greathelm weight', got('Greathelm')?.[2], 5.9); eq('Greathelm poise', got('Greathelm')?.[3], 7)
+eq("Astrologer Hood weight", got('Astrologer Hood')?.[2], 1.7); eq("All-Knowing Helm poise", got('All-Knowing Helm')?.[3], 5)
 
 console.log(`\n${pass} checks passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)
