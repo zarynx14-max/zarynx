@@ -12,9 +12,9 @@ import {
   STAT_KEYS, STAT_LABELS, MAX_STAT, MAX_LEVEL, CLASSES, SOFT_CAPS, EXAMPLE_SPREADS,
   getClass, classStats, computeBuildWithGear, nextPointGain, meetRequirements,
   rankClasses, rollTypeFor, hpFor, encodeBuild, decodeBuild,
-  parseTalismanEffect, talismanFamily,
+  parseTalismanEffect, talismanFamily, maxRequirements, shortfall,
 } from '@/lib/eldenring'
-import { ARMOR_ROWS, TALISMAN_ROWS } from '@/data/eldenringGear'
+import { ARMOR_ROWS, TALISMAN_ROWS, WEAPON_ROWS } from '@/data/eldenringGear'
 
 const SAVE_KEY = 'zarynx_er_builds'
 const DAMAGE_KEYS = ['strength', 'dexterity', 'intelligence', 'faith', 'arcane'] as const
@@ -35,6 +35,15 @@ const TALISMANS = TALISMAN_ROWS.map(r => ({
   family: talismanFamily(r[0]), mods: parseTalismanEffect(r[2]),
 })).sort((a, b) => a.name.localeCompare(b.name))
 const TAL_MAP = new Map(TALISMANS.map(t => [t.name, t]))
+const WEAPONS = WEAPON_ROWS.map(r => ({ name: r[0], cat: r[1], weight: r[2], req: r[3], grades: r[4] }))
+  .sort((a, b) => a.name.localeCompare(b.name))
+const WEAPON_MAP = new Map(WEAPONS.map(w => [w.name, w]))
+const WEAPON_SLOTS = ['Right hand 1', 'Right hand 2', 'Right hand 3', 'Left hand 1', 'Left hand 2', 'Left hand 3']
+const REQ_SHORT = ['Str', 'Dex', 'Int', 'Fai', 'Arc']
+function reqText(req: number[]): string {
+  const parts = req.map((n, i) => (n > 0 ? `${REQ_SHORT[i]} ${n}` : '')).filter(Boolean)
+  return parts.length ? parts.join(', ') : 'none'
+}
 
 // ── ITEM PICKER (type to search, pick from the list) ────────────────────────
 function ItemInput({ id, label, value, options, hint, onChange }: {
@@ -140,6 +149,7 @@ export default function EldenRingBuildClient() {
   const [armorSel, setArmorSel] = useState<string[]>(['', '', '', ''])
   const [talSel, setTalSel] = useState<string[]>(['', '', '', ''])
   const [talError, setTalError] = useState('')
+  const [weaponSel, setWeaponSel] = useState<string[]>(['', '', '', '', '', ''])
   const [targetText, setTargetText] = useState('')
   const [req, setReq] = useState<Record<DamageKey, string>>({ strength: '', dexterity: '', intelligence: '', faith: '', arcane: '' })
   const [saved, setSaved] = useState<Saved[]>([])
@@ -193,6 +203,15 @@ export default function EldenRingBuildClient() {
     setTalError('')
     setTalSel(t => t.map((x, j) => (j === i ? name : x)))
   }
+  function setWeapon(i: number, name: string) { setWeaponSel(w => w.map((x, j) => (j === i ? name : x))) }
+  function fillRequirementsFromWeapons() {
+    const list = weaponPieces.filter((w): w is NonNullable<typeof w> => !!w).map(w => w.req)
+    const m = maxRequirements(list)
+    setReq({
+      strength: m.strength ? String(m.strength) : '', dexterity: m.dexterity ? String(m.dexterity) : '',
+      intelligence: m.intelligence ? String(m.intelligence) : '', faith: m.faith ? String(m.faith) : '', arcane: m.arcane ? String(m.arcane) : '',
+    })
+  }
   function setArmor(i: number, name: string) { setArmorSel(a => a.map((x, j) => (j === i ? name : x))) }
 
   function resetBuild() { commit({ classId: snap.classId, stats: classStats(snap.classId) }) }
@@ -207,6 +226,7 @@ export default function EldenRingBuildClient() {
         if (d.targetLevel) setTargetText(String(d.targetLevel))
         setArmorSel(d.armor.map((n, i) => (ARMOR_MAP[i].has(n) ? n : '')))
         setTalSel(d.talismans.map(n => (TAL_MAP.has(n) ? n : '')))
+        setWeaponSel(d.weapons.map(n => (WEAPON_MAP.has(n) ? n : '')))
       }
       const raw = localStorage.getItem(SAVE_KEY)
       if (raw) setSaved(JSON.parse(raw))
@@ -218,17 +238,17 @@ export default function EldenRingBuildClient() {
   useEffect(() => {
     if (!loaded.current) return
     try {
-      const q = encodeBuild({ classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel })
+      const q = encodeBuild({ classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel, weapons: weaponSel })
       window.history.replaceState(null, '', `${window.location.pathname}?${q}`)
     } catch { /* ignore */ }
-  }, [snap, gearWeight, targetLevel, armorSel, talSel])
+  }, [snap, gearWeight, targetLevel, armorSel, talSel, weaponSel])
 
   function persist(next: Saved[]) {
     setSaved(next)
     try { localStorage.setItem(SAVE_KEY, JSON.stringify(next)) } catch { /* ignore */ }
   }
 
-  const state: BuildState = { classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel }
+  const state: BuildState = { classId: snap.classId, stats: snap.stats, gearWeight, targetLevel, armor: armorSel, talismans: talSel, weapons: weaponSel }
   const equippedTals = talSel.map(n => TAL_MAP.get(n)).filter((t): t is NonNullable<typeof t> => !!t)
   const mods = useMemo(() => equippedTals.map(t => t.mods).filter((m): m is TalismanMods => !!m), [talSel]) // eslint-disable-line react-hooks/exhaustive-deps
   const build = useMemo(() => computeBuildWithGear(snap.classId, snap.stats, mods), [snap, mods])
@@ -238,7 +258,9 @@ export default function EldenRingBuildClient() {
   const talWeight = equippedTals.reduce((t, x) => t + x.weight, 0)
   const poiseTotal = armorPieces.reduce((t, a) => t + (a?.poise ?? 0), 0)
   const poiseUnknown = armorPieces.some(a => a && a.poise === null)
-  const totalWeight = Math.round((armorWeight + talWeight + gearWeight) * 10) / 10
+  const weaponPieces = weaponSel.map(n => WEAPON_MAP.get(n))
+  const weaponWeight = weaponPieces.reduce((t, w) => t + (w?.weight ?? 0), 0)
+  const totalWeight = Math.round((armorWeight + talWeight + weaponWeight + gearWeight) * 10) / 10
   const rankings = useMemo(() => rankClasses(snap.stats), [snap.stats])
   const best = rankings[0]
   const current = rankings.find(r => r.cls.id === snap.classId) ?? rankings[0]
@@ -282,6 +304,7 @@ export default function EldenRingBuildClient() {
       `Elden Ring build (${cls.name} start, level ${build.level})`,
       STAT_KEYS.map(k => `${STAT_LABELS[k]} ${snap.stats[k]}`).join(' · '),
       `HP ${fmt(build.hp)} · FP ${fmt(build.fp)} · Stamina ${build.stamina} · Equip load ${totalWeight.toFixed(1)} / ${maxLoad.toFixed(1)}`,
+      weaponSel.some(Boolean) ? `Weapons: ${weaponSel.filter(Boolean).join(', ')}` : '',
       armorSel.some(Boolean) ? `Armor: ${armorSel.filter(Boolean).join(', ')}` : '',
       talSel.some(Boolean) ? `Talismans: ${talSel.filter(Boolean).join(', ')}` : '',
       `Runes needed: ${fmt(build.totalRunes)}`,
@@ -305,6 +328,7 @@ export default function EldenRingBuildClient() {
     setTargetText(d.targetLevel ? String(d.targetLevel) : '')
     setArmorSel(d.armor.map((n, i) => (ARMOR_MAP[i].has(n) ? n : '')))
     setTalSel(d.talismans.map(n => (TAL_MAP.has(n) ? n : '')))
+    setWeaponSel(d.weapons.map(n => (WEAPON_MAP.has(n) ? n : '')))
   }
   function handleImport() {
     const d = decodeBuild(importText.trim())
@@ -336,7 +360,7 @@ export default function EldenRingBuildClient() {
 
       <ToolHeader
         name="Elden Ring Build Optimizer"
-        description="Find the best starting class and the lowest level for your weapon's requirements. Pick armor and talismans to see exact HP, FP, stamina, equip load and rune costs."
+        description="Find the best starting class and the lowest level for your weapon's requirements. Pick weapons, armor and talismans to see exact HP, FP, stamina, equip load and rune costs."
         categoryLabel="Build Tools"
         categoryColor="mint"
         typeLabel="Optimizer"
@@ -468,8 +492,28 @@ export default function EldenRingBuildClient() {
               </section>
 
               <section className="rounded-[10px] border border-[var(--border)] bg-[var(--bg2)] p-[18px]" aria-labelledby="er-gear">
-                <h2 id="er-gear" className="mb-1 text-[14px] font-medium text-[var(--t1)]">Armor and talismans</h2>
+                <h2 id="er-gear" className="mb-1 text-[14px] font-medium text-[var(--t1)]">Weapons, armor and talismans</h2>
                 <p className="mb-3 text-[12px] text-[var(--t2)]">Type a name and pick it from the list. Weights add to your equip load, and talismans change your stats.</p>
+                <h3 className="mb-2 text-[12px] text-[var(--t2)]">Weapons ({WEAPONS.length} in the list)</h3>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {WEAPON_SLOTS.map((label, i) => {
+                    const w = weaponPieces[i]
+                    const short = w ? shortfall(w.req, eff) : []
+                    return (
+                      <ItemInput
+                        key={label} id={`er-weapon-${i}`} label={label} value={weaponSel[i]}
+                        options={WEAPONS.map(x => x.name)}
+                        hint={w ? `${w.cat} · weight ${w.weight} · needs ${reqText(w.req)} · ${short.length === 0 ? 'you meet this' : 'short: ' + short.map(x => `${STAT_LABELS[x.key]} ${x.need - x.have}`).join(', ')}` : undefined}
+                        onChange={v2 => setWeapon(i, v2)}
+                      />
+                    )
+                  })}
+                </div>
+                <button
+                  onClick={fillRequirementsFromWeapons} disabled={!weaponSel.some(Boolean)}
+                  className="mb-1 mt-3 min-h-[44px] rounded-[7px] border border-[var(--border2)] px-[14px] py-[10px] text-[12px] text-[var(--t1)] disabled:opacity-40"
+                >Use these weapons&apos; requirements in the optimizer</button>
+                <h3 className="mb-2 mt-4 text-[12px] text-[var(--t2)]">Armor</h3>
                 <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                   {SLOT_LABELS.map((label, i) => {
                     const piece = armorPieces[i]
@@ -499,7 +543,7 @@ export default function EldenRingBuildClient() {
                 </div>
                 {talError && <p className="mt-2 text-[11px] text-[#FF8A80]">{talError}</p>}
                 <p className="mt-3 text-[11px] leading-[1.5] text-[var(--t2)]">
-                  Weapons, shields, spells and attack rating are not in this version yet. Type their combined weight in the results panel.
+                  Katanas, straight swords, greatswords, colossal swords, glintstone staffs and sacred seals are in. Other weapon types, shields, spells and attack rating are not yet. Type the weight of anything missing in the results panel.
                 </p>
               </section>
 
@@ -575,7 +619,7 @@ export default function EldenRingBuildClient() {
                 <Tile label="Stamina" value={String(build.stamina)} />
               </div>
 
-              <label htmlFor="er-weight" className="mb-[6px] block text-[12px] text-[var(--t2)]">Weapons and other gear weight (type it in)</label>
+              <label htmlFor="er-weight" className="mb-[6px] block text-[12px] text-[var(--t2)]">Other weight (shields, weapons not in the list)</label>
               <input id="er-weight" type="number" inputMode="decimal" min={0} step={0.1} placeholder="0.0" value={gearText} onChange={e => setGearText(e.target.value)} className={fieldCls + ' mb-3'} />
 
               <div className="mb-[6px] flex justify-between text-[12px]">
@@ -592,7 +636,7 @@ export default function EldenRingBuildClient() {
               </div>
               <div className="mb-[6px] flex justify-between text-[10px] text-[var(--t2)]"><span>Light (under 30%)</span><span>Medium (to 70%)</span><span>Heavy</span></div>
               <p className="mb-[14px] text-[11px] text-[var(--t2)]">
-                Armor {armorWeight.toFixed(1)} + talismans {talWeight.toFixed(1)} + other {gearWeight.toFixed(1)}. Armor poise {poiseTotal}{poiseUnknown ? ' (some pieces unknown)' : ''}.
+                Weapons {weaponWeight.toFixed(1)} + armor {armorWeight.toFixed(1)} + talismans {talWeight.toFixed(1)} + other {gearWeight.toFixed(1)}. Armor poise {poiseTotal}{poiseUnknown ? ' (some pieces unknown)' : ''} (Eldenpedia values; another wiki lists higher poise for some pieces).
               </p>
 
               <h3 className="mb-1 text-[13px] font-medium text-[var(--t1)]">Suggestions</h3>
@@ -655,9 +699,10 @@ export default function EldenRingBuildClient() {
         <ToolSection last>
           <ToolFaq
             items={[
-              { question: 'Does this include weapons and attack rating?', answer: 'Not yet. Armor (weight and poise) and talismans (weight and stat effects) are included. Weapons, shields, spells and attack rating are planned. For now, type the weapon requirements and the combined weapon weight yourself.' },
+              { question: 'Does this include weapons and attack rating?', answer: 'Weapon weights and stat requirements are included for katanas, straight swords, greatswords, colossal swords, glintstone staffs and sacred seals. Attack rating is not included because it needs the game\'s own scaling tables. Other weapon types and shields are planned, so type their requirements and weight yourself for now.' },
               { question: 'How do talismans change the numbers?', answer: 'Stat talismans like Radagon\'s Soreseal raise the attribute used for HP, FP, stamina, equip load and weapon requirements, but not your level. Percent talismans (HP, FP, stamina, equip load) multiply with each other. Different versions of the same talisman cannot be equipped together.' },
-              { question: 'Is the armor list complete?', answer: 'It has 705 pieces, including Shadow of the Erdtree. A few pieces are missing because the source page had broken data for them. We would rather leave a piece out than show a wrong weight.' },
+              { question: 'Is the armor list complete?', answer: 'It has 712 pieces, including Shadow of the Erdtree. A few chest, glove and leg pieces are missing because the source page had broken data for them. We would rather leave a piece out than show a wrong weight.' },
+              { question: 'Why does poise differ from other sites?', answer: 'Two wikis disagree on poise: one lists higher values for many light and medium pieces, and heavy pieces agree. We use the Eldenpedia numbers, whose Bull-Goat set adds up to the commonly reported 100. Weight, which decides your roll type, agrees on both.' },
               { question: 'How are rune costs calculated?', answer: 'We use the game\'s level-up formula. It matches the published level table, for example 673 runes from level 1 to 2 and 1,038 runes from level 12 to 13.' },
               { question: 'Why do the soft cap ticks only show on three stats?', answer: 'HP, FP, stamina and equip load have published tables with clear soft caps. Attack from Strength, Dexterity, Intelligence, Faith and Arcane depends on the weapon, so we do not draw a cap that would be wrong for many weapons.' },
               { question: 'What does Optimize do?', answer: 'It sets each attribute to the higher of your class\'s starting value and the requirement you typed, which is the lowest level that can use the weapon. "Best class" also picks the class that makes this cheapest.' },

@@ -19,7 +19,8 @@
 //
 // Armor and talisman lists come from saved wiki pages (see src/data/eldenringGear.ts).
 // Talisman effects are read from the wiki's effect text by parseTalismanEffect().
-// NOT INCLUDED YET: weapons, spells, attack rating.
+// Weapon weights and requirements come from saved wiki type pages (Katanas, Straight Swords, Greatswords,
+// Colossal Swords, Staves, Sacred Seals). NOT INCLUDED YET: other weapon types, shields, spells, attack rating.
 
 export const STAT_KEYS = [
   'vigor', 'mind', 'endurance', 'strength', 'dexterity', 'intelligence', 'faith', 'arcane',
@@ -342,6 +343,7 @@ export interface BuildState {
   targetLevel: number | null
   armor: string[]             // head, chest, arms, legs ('' = empty)
   talismans: string[]         // up to 4 ('' = empty)
+  weapons: string[]           // 6 slots: right 1-3, left 1-3 ('' = empty)
 }
 
 export function encodeBuild(b: BuildState): string {
@@ -352,6 +354,7 @@ export function encodeBuild(b: BuildState): string {
   if (b.targetLevel) p.set('t', String(b.targetLevel))
   if (b.armor.some(Boolean)) p.set('a', b.armor.join('~'))
   if (b.talismans.some(Boolean)) p.set('tl', b.talismans.join('~'))
+  if (b.weapons.some(Boolean)) p.set('wp', b.weapons.join('~'))
   return p.toString()
 }
 
@@ -372,6 +375,7 @@ export function decodeBuild(query: string): BuildState | null {
   const t = Number(p.get('t') ?? 0)
   const armor = (p.get('a') ?? '').split('~')
   const tal = (p.get('tl') ?? '').split('~')
+  const wpn = (p.get('wp') ?? '').split('~')
   return {
     classId: cl.id,
     stats,
@@ -379,5 +383,29 @@ export function decodeBuild(query: string): BuildState | null {
     targetLevel: Number.isFinite(t) && t >= 1 && t <= MAX_LEVEL ? Math.round(t) : null,
     armor: [0, 1, 2, 3].map(i => armor[i] ?? ''),
     talismans: [0, 1, 2, 3].map(i => tal[i] ?? ''),
+    weapons: [0, 1, 2, 3, 4, 5].map(i => wpn[i] ?? ''),
   }
+}
+
+// ── WEAPON REQUIREMENTS ──────────────────────────────────────────────────────
+export const DAMAGE_STAT_ORDER: StatKey[] = ['strength', 'dexterity', 'intelligence', 'faith', 'arcane']
+
+/** Highest requirement for each damage stat across several weapons (each is [str, dex, int, fai, arc]). */
+export function maxRequirements(list: number[][]): Partial<Stats> {
+  const out: Partial<Stats> = {}
+  for (const req of list) {
+    DAMAGE_STAT_ORDER.forEach((k, i) => {
+      if (req[i] > (out[k] ?? 0)) out[k] = req[i]
+    })
+  }
+  return out
+}
+
+/** Which requirements you do not meet yet, and by how much. */
+export function shortfall(req: number[], have: Stats): { key: StatKey; need: number; have: number }[] {
+  const out: { key: StatKey; need: number; have: number }[] = []
+  DAMAGE_STAT_ORDER.forEach((k, i) => {
+    if (req[i] > have[k]) out.push({ key: k, need: req[i], have: have[k] })
+  })
+  return out
 }

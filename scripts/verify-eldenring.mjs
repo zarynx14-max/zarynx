@@ -1,7 +1,7 @@
 // Run:  node --experimental-strip-types scripts/verify-eldenring.mjs
 // Checks the engine against numbers copied separately from the wiki pages.
 import * as E from '../src/lib/eldenring.ts'
-import { ARMOR_ROWS, TALISMAN_ROWS } from '../src/data/eldenringGear.ts'
+import { ARMOR_ROWS, TALISMAN_ROWS, WEAPON_ROWS } from '../src/data/eldenringGear.ts'
 
 let pass = 0, fail = 0
 function eq(name, got, want) {
@@ -73,11 +73,11 @@ eq('roll light', E.rollTypeFor(29, 100), 'Light'); eq('roll medium', E.rollTypeF
 eq('roll heavy', E.rollTypeFor(70, 100), 'Heavy'); eq('roll over', E.rollTypeFor(100.1, 100), 'Overloaded')
 const st = E.meetRequirements('samurai', { strength: 20, dexterity: 30 })
 eq('meet req str', st.strength, 20); eq('meet req keeps base', st.vigor, 12)
-const enc = E.encodeBuild({ classId: 'samurai', stats: st, gearWeight: 55.5, targetLevel: 90, armor: ['Steel Helm','','',''], talismans: ['Arsenal Charm','','',''] })
+const enc = E.encodeBuild({ classId: 'samurai', stats: st, gearWeight: 55.5, targetLevel: 90, armor: ['Steel Helm','','',''], talismans: ['Arsenal Charm','','',''], weapons: ['Uchigatana','','','','',''] })
 const dec = E.decodeBuild('?' + enc)
 eq('share roundtrip', JSON.stringify(dec?.stats), JSON.stringify(st))
 eq('share weight', dec?.gearWeight, 55.5)
-eq('share armor', dec?.armor[0], 'Steel Helm'); eq('share tal', dec?.talismans[0], 'Arsenal Charm')
+eq('share armor', dec?.armor[0], 'Steel Helm'); eq('share tal', dec?.talismans[0], 'Arsenal Charm'); eq('share weapon', dec?.weapons[0], 'Uchigatana')
 
 
 // ── Talismans: effects read from the wiki text ──
@@ -124,7 +124,7 @@ eq('hp talismans multiply', stack.hp, Math.floor(2100 * 1.08 * 1.04))
 const capped = E.computeBuildWithGear('wretch', max99, [soreseal]); eq('effective cap 99', capped.effective.vigor, 99)
 
 // ── Armor data sanity ──
-eq('armor rows', ARMOR_ROWS.length, 705)
+eq('armor rows', ARMOR_ROWS.length, 712)
 for (const r of ARMOR_ROWS) {
   if (!(r[2] > 0 && r[2] < 100)) { fail++; console.log('FAIL armor weight', r[0], r[2]) } else pass++
   if (!['h', 'c', 'a', 'l'].includes(r[1])) { fail++; console.log('FAIL armor slot', r[0]) } else pass++
@@ -135,6 +135,34 @@ const got = n => ARMOR_ROWS.find(r => r[0] === n)
 eq('Albinauric Mask weight', got('Albinauric Mask')?.[2], 3.8); eq('Albinauric Mask poise', got('Albinauric Mask')?.[3], 3)
 eq('Greathelm weight', got('Greathelm')?.[2], 5.9); eq('Greathelm poise', got('Greathelm')?.[3], 7)
 eq("Astrologer Hood weight", got('Astrologer Hood')?.[2], 1.7); eq("All-Knowing Helm poise", got('All-Knowing Helm')?.[3], 5)
+
+
+// ── Weapons ──
+eq('weapon rows', WEAPON_ROWS.length, 106)
+const cnt = {}; for (const r of WEAPON_ROWS) cnt[r[1]] = (cnt[r[1]] ?? 0) + 1
+eq('katanas', cnt['Katana'], 10); eq('straight swords', cnt['Straight Sword'], 23); eq('greatswords', cnt['Greatsword'], 25)
+eq('colossal swords', cnt['Colossal Sword'], 16); eq('staves', cnt['Glintstone Staff'], 20); eq('seals', cnt['Sacred Seal'], 12)
+eq('weapon names unique', new Set(WEAPON_ROWS.map(r => r[0])).size, WEAPON_ROWS.length)
+for (const r of WEAPON_ROWS) {
+  const ok = r[2] >= 0 && r[2] < 60 && r[3].length === 5 && r[3].every(n => Number.isInteger(n) && n >= 0 && n <= 99) && r[4].length === 5
+  if (!ok) { fail++; console.log('FAIL weapon row', r[0]) } else pass++
+}
+// Second source: GameWith's katana list (weight and Str/Dex/Int/Fai/Arc requirements), compared with the Eldenpedia page
+const katanas = {
+  'Uchigatana': [5.5, [11, 15, 0, 0, 0]], 'Nagakiba': [7.0, [18, 22, 0, 0, 0]], 'Meteoric Ore Blade': [7.5, [15, 14, 18, 0, 0]],
+  'Moonveil': [6.5, [12, 18, 23, 0, 0]], 'Rivers of Blood': [6.5, [12, 18, 0, 0, 20]], 'Serpentbone Blade': [6.0, [11, 22, 0, 0, 0]],
+  'Hand of Malenia': [7.0, [16, 48, 0, 0, 0]], 'Dragonscale Blade': [5.5, [12, 20, 0, 0, 0]],
+}
+for (const [n, [w, rq]] of Object.entries(katanas)) {
+  const row = WEAPON_ROWS.find(r => r[0] === n)
+  eq(`${n} weight`, row?.[2], w); eq(`${n} reqs`, JSON.stringify(row?.[3]), JSON.stringify(rq))
+}
+// Requirement helpers
+const mr = E.maxRequirements([[11, 15, 0, 0, 0], [12, 18, 23, 0, 0], [0, 0, 0, 14, 20]])
+eq('max req str', mr.strength, 12); eq('max req dex', mr.dexterity, 18); eq('max req int', mr.intelligence, 23); eq('max req fai', mr.faith, 14); eq('max req arc', mr.arcane, 20)
+const sf = E.shortfall([12, 18, 23, 0, 0], E.classStats('samurai'))
+eq('shortfall count', sf.length, 2); eq('shortfall dex', sf.find(x => x.key === 'dexterity')?.need - sf.find(x => x.key === 'dexterity')?.have, 3)
+eq('shortfall str', sf.find(x => x.key === 'strength') === undefined, true)
 
 console.log(`\n${pass} checks passed, ${fail} failed`)
 process.exit(fail ? 1 : 0)

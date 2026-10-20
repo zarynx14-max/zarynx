@@ -130,5 +130,93 @@
     6.1
    ]
   ]
+ ],
+ "wrong_table": [
+  [
+   "arms",
+   "Oathseeker Knight Helm"
+  ]
+ ],
+ "added_from_fextralife_helms": [
+  "Broken Gold Mask",
+  "Leontiel's Hat",
+  "Silver Grooved Helm",
+  "Steel Helm",
+  "Oathseeker Knight Helm",
+  "Grass Hair Ornament",
+  "Ragged Hat",
+  "Ragged Hat (Altered)"
+ ],
+ "still_missing_broken": [
+  [
+   "head",
+   "Leontiel's Hat (Altered)"
+  ],
+  [
+   "chest",
+   "Gold Tattoo (Chest)"
+  ],
+  [
+   "chest",
+   "Leontiel's Armor"
+  ],
+  [
+   "chest",
+   "Silver Grooved Armor"
+  ],
+  [
+   "chest",
+   "Silver Grooved Armor (Altered)"
+  ],
+  [
+   "chest",
+   "Steel Armor"
+  ],
+  [
+   "arms",
+   "Gold Tattoo (Arm)"
+  ],
+  [
+   "arms",
+   "Leontiel's Leather Gloves"
+  ],
+  [
+   "arms",
+   "Silver Grooved Gauntlets"
+  ],
+  [
+   "arms",
+   "Steel Gauntlets"
+  ],
+  [
+   "legs",
+   "Gold Tattoo (Leg)"
+  ],
+  [
+   "legs",
+   "Leontiel's Boots"
+  ],
+  [
+   "legs",
+   "Silver Grooved Greaves"
+  ],
+  [
+   "legs",
+   "Steel Greaves"
+  ]
+ ],
+ "weapon_parse_issues": [
+  [
+   "staves",
+   "Astrologer's Staff",
+   "req",
+   [
+    "7",
+    "-",
+    "16",
+    "-",
+    "-"
+   ]
+  ]
  ]
 }
